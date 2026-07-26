@@ -44,6 +44,9 @@ export function useChatStream() {
           onDone: () => {
             if (gen === generation) msg.complete = true
           },
+          onError: (message) => {
+            if (gen === generation) msg.error = message
+          },
         },
         controller.signal
       )

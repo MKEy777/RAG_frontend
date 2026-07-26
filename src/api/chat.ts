@@ -12,6 +12,7 @@ export interface ChatStreamCallbacks {
   onToken: (token: string) => void
   onReferences: (references: ChatReference[]) => void
   onDone: () => void
+  onError?: (message: string) => void
 }
 
 export function streamChat(
@@ -35,6 +36,8 @@ export function streamChat(
         callbacks.onToken(JSON.parse(ev.data).content ?? '')
       } else if (ev.event === 'references') {
         callbacks.onReferences(JSON.parse(ev.data).references ?? [])
+      } else if (ev.event === 'error') {
+        callbacks.onError?.(JSON.parse(ev.data).message ?? '生成中断')
       } else if (ev.event === 'done') {
         callbacks.onDone()
       }
