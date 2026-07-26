@@ -14,6 +14,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   references?: ChatReference[]
+  suggestions?: string[]
   complete: boolean
   error?: string
 }

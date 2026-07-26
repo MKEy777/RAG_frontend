@@ -26,6 +26,18 @@
         :references="message.references"
       />
 
+      <div v-if="message.suggestions?.length && message.complete" class="suggestions">
+        <t-tag
+          v-for="s in message.suggestions"
+          :key="s"
+          variant="outline"
+          style="cursor: pointer; margin-right: 8px; margin-top: 8px"
+          @click="emit('suggest', s)"
+        >
+          {{ s }}
+        </t-tag>
+      </div>
+
       <div v-if="hoverRef" class="popover-wrap" :style="popoverStyle">
         <CitationPopover :reference="hoverRef" />
       </div>
@@ -42,6 +54,7 @@ import ChatReferences from './ChatReferences.vue'
 import CitationPopover from './CitationPopover.vue'
 
 const props = defineProps<{ message: ChatMessage }>()
+const emit = defineEmits<{ suggest: [text: string] }>()
 
 const { displayed } = useTypewriter(
   () => props.message.content,

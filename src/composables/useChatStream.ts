@@ -52,6 +52,9 @@ export function useChatStream() {
           onReferences: (references) => {
             if (gen === generation) msg.references = references
           },
+          onSuggestions: (items) => {
+            if (gen === generation) msg.suggestions = items
+          },
           onDone: () => {
             if (gen === generation) msg.complete = true
           },

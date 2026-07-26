@@ -1,50 +1,90 @@
 <template>
   <div class="chat-page">
-    <div class="chat-toolbar">
-      <t-select
-        v-model="selectedKbIds"
-        :options="kbOptions"
-        multiple
-        clearable
-        :min-collapsed-num="2"
-        placeholder="选择知识库"
-        class="kb-select"
-        size="small"
-      />
-      <div class="boost-switch">
-        <t-switch v-model="wikiBoost" size="small" />
-        <span>Wiki 增强</span>
-      </div>
-    </div>
-
     <div v-if="!session || session.messages.length === 0" class="chat-hero">
       <h1 class="hero-title">有什么可以帮你？</h1>
       <p class="hero-hint">
-        {{ selectedKbIds.length ? '基于所选知识库回答，答案附引用来源' : '请先在上方选择至少一个知识库' }}
+        {{ selectedKbIds.length ? '基于所选知识库回答，答案附引用来源' : '点击 + 选择知识库开始对话' }}
       </p>
-      <div class="hero-input">
+      <div class="hero-input-area">
+        <div v-if="kbPopupOpen" class="kb-popup">
+          <div
+            v-for="kb in kbOptions"
+            :key="kb.value"
+            class="kb-popup-item"
+            :class="{ selected: selectedKbIds.includes(kb.value) }"
+            @click="toggleKb(kb.value)"
+          >
+            <t-icon :name="selectedKbIds.includes(kb.value) ? 'check' : 'server'" size="16px" />
+            <span>{{ kb.label }}</span>
+          </div>
+          <div v-if="!kbOptions.length" class="kb-popup-empty">暂无知识库</div>
+        </div>
         <ChatInput
           :disabled="!selectedKbIds.length"
           :streaming="isStreaming"
+          large
           @send="handleSend"
           @stop="stop"
-        />
+        >
+          <template #actions-left>
+            <button class="action-chip" :class="{ active: kbPopupOpen }" @click="kbPopupOpen = !kbPopupOpen">
+              <t-icon name="add" size="16px" />
+              <span>知识库</span>
+              <t-tag v-if="selectedKbIds.length" variant="light" size="small">{{ selectedKbIds.length }}</t-tag>
+            </button>
+          </template>
+          <template #actions-right>
+            <button class="action-chip" :class="{ active: wikiBoost }" @click="wikiBoost = !wikiBoost">
+              <t-icon name="flashlight" size="16px" />
+              <span>Wiki 增强</span>
+            </button>
+          </template>
+        </ChatInput>
       </div>
     </div>
 
     <template v-else>
       <div ref="scrollRef" class="chat-messages">
         <div class="chat-messages-inner">
-          <ChatMessage v-for="(msg, i) in session.messages" :key="`${session.id}-${i}`" :message="msg" />
+          <ChatMessage v-for="(msg, i) in session.messages" :key="`${session.id}-${i}`" :message="msg" @suggest="handleSend" />
         </div>
       </div>
       <div class="chat-footer">
-        <ChatInput
-          :disabled="!selectedKbIds.length"
-          :streaming="isStreaming"
-          @send="handleSend"
-          @stop="stop"
-        />
+        <div class="footer-input-area">
+          <div v-if="kbPopupOpen" class="kb-popup">
+            <div
+              v-for="kb in kbOptions"
+              :key="kb.value"
+              class="kb-popup-item"
+              :class="{ selected: selectedKbIds.includes(kb.value) }"
+              @click="toggleKb(kb.value)"
+            >
+              <t-icon :name="selectedKbIds.includes(kb.value) ? 'check' : 'server'" size="16px" />
+              <span>{{ kb.label }}</span>
+            </div>
+            <div v-if="!kbOptions.length" class="kb-popup-empty">暂无知识库</div>
+          </div>
+          <ChatInput
+            :disabled="!selectedKbIds.length"
+            :streaming="isStreaming"
+            @send="handleSend"
+            @stop="stop"
+          >
+            <template #actions-left>
+              <button class="action-chip" :class="{ active: kbPopupOpen }" @click="kbPopupOpen = !kbPopupOpen">
+                <t-icon name="add" size="16px" />
+                <span>知识库</span>
+                <t-tag v-if="selectedKbIds.length" variant="light" size="small">{{ selectedKbIds.length }}</t-tag>
+              </button>
+            </template>
+            <template #actions-right>
+              <button class="action-chip" :class="{ active: wikiBoost }" @click="wikiBoost = !wikiBoost">
+                <t-icon name="flashlight" size="16px" />
+                <span>Wiki 增强</span>
+              </button>
+            </template>
+          </ChatInput>
+        </div>
         <p class="chat-disclaimer">内容由 AI 生成，请核对引用来源</p>
       </div>
     </template>
@@ -65,6 +105,7 @@ const { isStreaming, send, stop } = useChatStream()
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const selectedKbIds = ref<string[]>([])
 const wikiBoost = ref(false)
+const kbPopupOpen = ref(false)
 const scrollRef = ref<HTMLElement | null>(null)
 
 const session = computed(() => chatStore.active)
@@ -100,6 +141,7 @@ watch(
 
 const handleSend = async (text: string) => {
   if (isStreaming.value || !selectedKbIds.value.length) return
+  kbPopupOpen.value = false
   let target = session.value
   if (!target) {
     target = chatStore.createSession([...selectedKbIds.value], wikiBoost.value)
@@ -122,6 +164,12 @@ onMounted(async () => {
     // client 拦截器已弹错
   }
 })
+
+const toggleKb = (id: string) => {
+  const idx = selectedKbIds.value.indexOf(id)
+  if (idx >= 0) selectedKbIds.value.splice(idx, 1)
+  else selectedKbIds.value.push(id)
+}
 </script>
 
 <style scoped>
@@ -132,44 +180,13 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-.chat-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  height: 52px;
-  padding: 0 16px;
-  flex-shrink: 0;
-}
-
-.kb-select {
-  width: 300px;
-}
-
-.kb-select :deep(.t-input) {
-  border-color: transparent;
-  background: transparent;
-  transition: border-color 0.15s ease, background 0.15s ease;
-}
-
-.kb-select :deep(.t-input:hover) {
-  background: var(--td-gray-color-2);
-}
-
-.boost-switch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--td-text-color-secondary);
-}
-
 .chat-hero {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 24px 15vh;
+  padding: 24px 24px 12vh;
   gap: 10px;
 }
 
@@ -186,9 +203,78 @@ onMounted(async () => {
   margin: 0 0 16px;
 }
 
-.hero-input {
+.hero-input-area,
+.footer-input-area {
   width: 100%;
   max-width: 760px;
+  position: relative;
+}
+
+.kb-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--td-bg-color-container);
+  border: 1px solid var(--td-component-stroke);
+  border-radius: var(--td-radius-large);
+  box-shadow: var(--td-shadow-2);
+  z-index: 50;
+}
+
+.kb-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--td-radius-medium);
+  font-size: 14px;
+  color: var(--td-text-color-primary);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.kb-popup-item:hover {
+  background: var(--td-gray-color-2);
+}
+
+.kb-popup-item.selected {
+  color: var(--td-brand-color);
+  font-weight: 600;
+}
+
+.kb-popup-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--td-text-color-placeholder);
+}
+
+.action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border: none;
+  border-radius: 14px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--td-text-color-placeholder);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.action-chip:hover {
+  background: var(--td-gray-color-2);
+  color: var(--td-text-color-secondary);
+}
+
+.action-chip.active {
+  background: var(--td-brand-color);
+  color: #fff;
 }
 
 .chat-messages {
@@ -209,11 +295,9 @@ onMounted(async () => {
 .chat-footer {
   flex-shrink: 0;
   padding: 8px 24px 10px;
-}
-
-.chat-footer :deep(.chat-input) {
-  max-width: 760px;
-  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .chat-disclaimer {
