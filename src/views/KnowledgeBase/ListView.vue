@@ -67,6 +67,12 @@
         <t-form-item label="嵌入模型" name="embedding_model_id">
           <t-input v-model="formData.embedding_model_id" placeholder="Qwen/Qwen3-Embedding-0.6B" />
         </t-form-item>
+        <t-form-item label="启用 Wiki" name="enable_wiki">
+          <t-switch v-model="formData.enable_wiki" />
+        </t-form-item>
+        <t-form-item label="启用知识图谱" name="enable_graph">
+          <t-switch v-model="formData.enable_graph" />
+        </t-form-item>
       </t-form>
     </t-dialog>
   </div>
@@ -102,6 +108,8 @@ const formData = reactive<KBCreateParams>({
   type: 'document',
   description: '',
   embedding_model_id: 'Qwen/Qwen3-Embedding-0.6B',
+  enable_wiki: true,
+  enable_graph: true,
 })
 
 const columns: TableProps['columns'] = [

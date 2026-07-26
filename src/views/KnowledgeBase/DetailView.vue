@@ -31,6 +31,14 @@
         </t-descriptions-item>
         <t-descriptions-item label="描述">{{ kb.description || '-' }}</t-descriptions-item>
       </t-descriptions>
+      <t-space v-if="kb" class="kb-actions">
+        <t-button variant="outline" @click="goToWiki">
+          <t-icon name="book" /> Wiki
+        </t-button>
+        <t-button variant="outline" @click="goToGraph">
+          <t-icon name="chart" /> 知识图谱
+        </t-button>
+      </t-space>
     </t-card>
 
     <!-- 文档管理 -->
@@ -70,12 +78,22 @@
           </t-tag>
         </template>
         <template #op="{ row }">
-          <t-popconfirm
-            content="确定要删除这个文档吗？"
-            @confirm="handleDelete(row.id)"
-          >
-            <t-button variant="text" theme="danger">删除</t-button>
-          </t-popconfirm>
+          <t-space>
+            <t-button
+              v-if="row.parse_status === 'completed'"
+              variant="text"
+              theme="primary"
+              @click="goToChunks(row.id)"
+            >
+              切片
+            </t-button>
+            <t-popconfirm
+              content="确定要删除这个文档吗？"
+              @confirm="handleDelete(row.id)"
+            >
+              <t-button variant="text" theme="danger">删除</t-button>
+            </t-popconfirm>
+          </t-space>
         </template>
       </t-table>
     </t-card>
@@ -240,6 +258,18 @@ const startPollingIfNeeded = () => {
 
 const goBack = () => {
   router.push('/knowledge-bases')
+}
+
+const goToWiki = () => {
+  router.push(`/knowledge-bases/${kbId}/wiki`)
+}
+
+const goToGraph = () => {
+  router.push(`/knowledge-bases/${kbId}/graph`)
+}
+
+const goToChunks = (docId: string) => {
+  router.push(`/knowledge-bases/${kbId}/documents/${docId}/chunks`)
 }
 
 onMounted(() => {

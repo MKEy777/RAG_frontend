@@ -41,6 +41,14 @@
         </template>
         <template #op="{ row }">
           <t-space>
+            <t-button
+              v-if="row.parse_status === 'completed'"
+              variant="text"
+              theme="primary"
+              @click="goToChunks(row.id)"
+            >
+              切片
+            </t-button>
             <t-button variant="text" theme="primary" @click="viewStatus(row.id)">
               状态
             </t-button>
@@ -244,6 +252,10 @@ const startPollingIfNeeded = () => {
 
 const goBack = () => {
   router.push(`/knowledge-bases/${kbId}`)
+}
+
+const goToChunks = (docId: string) => {
+  router.push(`/knowledge-bases/${kbId}/documents/${docId}/chunks`)
 }
 
 onMounted(() => {

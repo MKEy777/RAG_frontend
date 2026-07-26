@@ -27,6 +27,36 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '文档管理' },
       },
       {
+        path: 'knowledge-bases/:id/documents/:docId/chunks',
+        name: 'ChunksView',
+        component: () => import('@/views/Documents/ChunksView.vue'),
+        meta: { title: '切片详情' },
+      },
+      {
+        path: 'knowledge-bases/:id/wiki',
+        name: 'WikiView',
+        component: () => import('@/views/Wiki/WikiView.vue'),
+        meta: { title: 'Wiki' },
+      },
+      {
+        path: 'knowledge-bases/:id/graph',
+        name: 'GraphView',
+        component: () => import('@/views/Graph/GraphView.vue'),
+        meta: { title: '知识图谱' },
+      },
+      {
+        path: 'wiki',
+        name: 'WikiHome',
+        component: () => import('@/views/Wiki/WikiView.vue'),
+        meta: { title: 'Wiki' },
+      },
+      {
+        path: 'graph',
+        name: 'GraphHome',
+        component: () => import('@/views/Graph/GraphView.vue'),
+        meta: { title: '知识图谱' },
+      },
+      {
         path: 'retrieval',
         name: 'RetrievalTest',
         component: () => import('@/views/Retrieval/TestView.vue'),

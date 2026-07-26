@@ -5,6 +5,8 @@ export interface KnowledgeBase {
   name: string
   type: string
   description: string | null
+  enable_wiki: boolean
+  enable_graph: boolean
 }
 
 export interface KBCreateParams {
@@ -14,6 +16,8 @@ export interface KBCreateParams {
   embedding_model_id?: string
   chunking_config?: Record<string, unknown>
   indexing_strategy?: Record<string, unknown>
+  enable_wiki?: boolean
+  enable_graph?: boolean
 }
 
 export interface PaginatedResponse<T> {

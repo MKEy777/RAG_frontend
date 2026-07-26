@@ -15,6 +15,18 @@
           </template>
           知识库管理
         </t-menu-item>
+        <t-menu-item value="/wiki">
+          <template #icon>
+            <t-icon name="book" />
+          </template>
+          Wiki
+        </t-menu-item>
+        <t-menu-item value="/graph">
+          <template #icon>
+            <t-icon name="fork" />
+          </template>
+          知识图谱
+        </t-menu-item>
         <t-menu-item value="/retrieval">
           <template #icon>
             <t-icon name="search" />
@@ -47,6 +59,8 @@ const collapsed = ref(false)
 
 const activeMenu = computed(() => {
   const path = route.path
+  if (path.includes('/wiki')) return '/wiki'
+  if (path.includes('/graph')) return '/graph'
   if (path.startsWith('/knowledge-bases')) return '/knowledge-bases'
   if (path.startsWith('/retrieval')) return '/retrieval'
   return path
