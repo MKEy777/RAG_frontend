@@ -155,7 +155,8 @@ const renderChart = () => {
             maxFreq > 1
               ? Math.max(10, Math.min(50, 10 + (40 * Math.log(n.frequency)) / Math.log(maxFreq)))
               : 20,
-          category: n.type,
+          category: types.indexOf(n.type),
+          type: n.type,
           description: n.description,
           frequency: n.frequency,
           degree: n.degree,

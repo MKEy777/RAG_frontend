@@ -20,7 +20,18 @@
 
     <div class="split">
       <div class="pane source-pane">
-        <div class="pane-header">解析后源文</div>
+        <div class="pane-header">
+          解析后源文
+          <t-button
+            v-if="sourceContent"
+            variant="text"
+            size="small"
+            shape="square"
+            @click="copySource"
+          >
+            <t-icon name="file-copy" />
+          </t-button>
+        </div>
         <div class="pane-body" ref="sourceScroll">
           <t-loading :loading="sourceLoading" style="min-height: 200px">
             <t-empty
@@ -54,6 +65,15 @@
                   </t-tag>
                   <span class="chunk-pos">{{ c.start_at ?? '-' }} – {{ c.end_at ?? '-' }}</span>
                   <span v-if="c.parent_chunk_id" class="chunk-parent">父: {{ c.parent_chunk_id.slice(0, 8) }}</span>
+                  <t-button
+                    variant="text"
+                    size="small"
+                    shape="square"
+                    class="copy-btn"
+                    @click.stop="copyChunk(c)"
+                  >
+                    <t-icon name="file-copy" />
+                  </t-button>
                 </div>
                 <div class="chunk-content">{{ c.content }}</div>
               </div>
@@ -78,6 +98,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { MessagePlugin } from 'tdesign-vue-next'
 import { getDocument } from '@/api/documents'
 import { listChunks, getDocumentContent, type Chunk } from '@/api/chunks'
 
@@ -186,8 +207,26 @@ const handleTypeChange = () => {
   fetchChunks()
 }
 
+const copySource = async () => {
+  try {
+    await navigator.clipboard.writeText(sourceContent.value || '')
+    MessagePlugin.success('已复制源文到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
+const copyChunk = async (c: Chunk) => {
+  try {
+    await navigator.clipboard.writeText(c.content || '')
+    MessagePlugin.success('已复制到剪贴板')
+  } catch {
+    MessagePlugin.error('复制失败')
+  }
+}
+
 const goBack = () => {
-  router.push(`/knowledge-bases/${kbId}/documents`)
+  router.push(`/knowledge-bases/${kbId}`)
 }
 
 onMounted(() => {
@@ -304,6 +343,16 @@ onMounted(() => {
   margin-bottom: 6px;
   font-size: 12px;
   color: var(--td-text-color-placeholder);
+}
+
+.copy-btn {
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.chunk-item:hover .copy-btn {
+  opacity: 1;
 }
 
 .chunk-content {

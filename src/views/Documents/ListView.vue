@@ -49,6 +49,14 @@
             >
               切片
             </t-button>
+            <t-button
+              v-if="isMdFile(row.file_name)"
+              variant="text"
+              theme="primary"
+              @click="startImageUpload(row)"
+            >
+              补充图片
+            </t-button>
             <t-button variant="text" theme="primary" @click="viewStatus(row.id)">
               状态
             </t-button>
@@ -62,6 +70,16 @@
         </template>
       </t-table>
     </t-card>
+
+    <!-- 隐藏文件夹选择器 -->
+    <input
+      ref="folderInputRef"
+      type="file"
+      webkitdirectory
+      multiple
+      style="display: none"
+      @change="handleFolderSelected"
+    />
 
     <!-- 状态详情对话框 -->
     <t-dialog
@@ -82,6 +100,16 @@
           <t-descriptions-item label="进度">
             <t-progress :percentage="docStatus.progress.percent" />
           </t-descriptions-item>
+          <t-descriptions-item v-if="docStatus.graph_status" label="知识图谱">
+            <t-tag :theme="getStatusTheme(docStatus.graph_status)" variant="light" size="small">
+              {{ getStatusText(docStatus.graph_status) }}
+            </t-tag>
+          </t-descriptions-item>
+          <t-descriptions-item v-if="docStatus.wiki_status" label="Wiki">
+            <t-tag :theme="getStatusTheme(docStatus.wiki_status)" variant="light" size="small">
+              {{ getStatusText(docStatus.wiki_status) }}
+            </t-tag>
+          </t-descriptions-item>
           <t-descriptions-item v-if="docStatus.error_message" label="错误信息">
             <t-text theme="danger">{{ docStatus.error_message }}</t-text>
           </t-descriptions-item>
@@ -96,6 +124,8 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import type { TableProps, UploadChangeContext } from 'tdesign-vue-next'
+import JSZip from 'jszip'
+import client from '@/api/client'
 import { getKnowledgeBase } from '@/api/knowledgeBase'
 import {
   listDocuments,
@@ -115,6 +145,7 @@ const documents = ref<Document[]>([])
 const loading = ref(false)
 const showStatusDialog = ref(false)
 const docStatus = ref<DocumentStatus | null>(null)
+const folderInputRef = ref<HTMLInputElement | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 const pagination = reactive({
@@ -124,9 +155,9 @@ const pagination = reactive({
 })
 
 const columns: TableProps['columns'] = [
-  { colKey: 'file_name', title: '文件名', ellipsis: true },
-  { colKey: 'parse_status', title: '状态', width: 100 },
-  { colKey: 'op', title: '操作', width: 140, align: 'center' },
+  { colKey: 'file_name', title: '文件名', width: 280, ellipsis: true },
+  { colKey: 'parse_status', title: '状态', width: 90 },
+  { colKey: 'op', title: '操作', width: 220, align: 'center' },
 ]
 
 const getStatusTheme = (status: string) => {
@@ -193,14 +224,77 @@ const handleFileChange = async (files: UploadChangeContext['currentSelectedFiles
   if (!files || files.length === 0) return
 
   for (const file of files) {
+    const raw = file.raw as File
     try {
-      await uploadDocument(kbId, file.raw as File)
-      MessagePlugin.success(`${file.name} 上传成功`)
+      const res = await uploadDocument(kbId, raw)
+      if (res.needs_images) {
+        MessagePlugin.warning(`${raw.name} 含本地图片引用，可点击“补充图片”上传`)
+      } else {
+        MessagePlugin.success(`${raw.name} 上传成功`)
+      }
     } catch {
-      MessagePlugin.error(`${file.name} 上传失败`)
+      MessagePlugin.error(`${raw.name} 上传失败`)
     }
   }
   fetchDocuments()
+}
+
+const isMdFile = (name: string | null) => {
+  if (!name) return false
+  const lower = name.toLowerCase()
+  return lower.endsWith('.md') || lower.endsWith('.markdown')
+}
+
+let pendingMdDoc: Document | null = null
+
+const startImageUpload = (doc: Document) => {
+  pendingMdDoc = doc
+  folderInputRef.value?.click()
+}
+
+const handleFolderSelected = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const folderFiles = input.files
+  if (!pendingMdDoc) return
+
+  const mdName = pendingMdDoc.file_name || 'document.md'
+
+  try {
+    // 下载原始 md 文件内容
+    const mdRes = await client.get(`/documents/${pendingMdDoc.id}/content`)
+    const mdContent = mdRes.data?.content || ''
+
+    const zip = new JSZip()
+    zip.file(mdName, mdContent)
+
+    if (folderFiles && folderFiles.length > 0) {
+      const firstPath = (folderFiles[0] as any).webkitRelativePath as string
+      const topFolder = firstPath.split('/')[0]
+
+      for (let i = 0; i < folderFiles.length; i++) {
+        const f = folderFiles[i]
+        const relPath = (f as any).webkitRelativePath as string
+        const innerPath = relPath.startsWith(topFolder + '/')
+          ? relPath.slice(topFolder.length + 1)
+          : relPath
+        zip.file(innerPath, f)
+      }
+    }
+
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const zipFile = new File([blob], mdName.replace(/\.(md|markdown)$/i, '.zip'), { type: 'application/zip' })
+
+    // 先删除旧文档，再上传 zip
+    await deleteDocument(pendingMdDoc.id)
+    await uploadDocument(kbId, zipFile)
+    MessagePlugin.success(`${mdName} 含图片重新上传成功`)
+  } catch {
+    MessagePlugin.error('打包上传失败')
+  } finally {
+    pendingMdDoc = null
+    input.value = ''
+    fetchDocuments()
+  }
 }
 
 const handleDelete = async (docId: string) => {
@@ -217,8 +311,34 @@ const viewStatus = async (docId: string) => {
   try {
     docStatus.value = await getDocumentStatus(docId)
     showStatusDialog.value = true
+    startStatusPolling(docId)
   } catch {
     MessagePlugin.error('获取状态失败')
+  }
+}
+
+let statusPollTimer: ReturnType<typeof setInterval> | null = null
+
+const startStatusPolling = (docId: string) => {
+  stopStatusPolling()
+  statusPollTimer = setInterval(async () => {
+    try {
+      const status = await getDocumentStatus(docId)
+      docStatus.value = status
+      if (!isBuilding(status)) {
+        stopStatusPolling()
+        fetchDocuments()
+      }
+    } catch {
+      stopStatusPolling()
+    }
+  }, 3000)
+}
+
+const stopStatusPolling = () => {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer)
+    statusPollTimer = null
   }
 }
 
@@ -250,6 +370,15 @@ const startPollingIfNeeded = () => {
   }
 }
 
+const isBuilding = (status: DocumentStatus | null) => {
+  if (!status) return false
+  return (
+    status.parse_status === 'processing' ||
+    status.graph_status === 'processing' ||
+    status.wiki_status === 'processing'
+  )
+}
+
 const goBack = () => {
   router.push(`/knowledge-bases/${kbId}`)
 }
@@ -267,6 +396,7 @@ onUnmounted(() => {
   if (pollTimer) {
     clearInterval(pollTimer)
   }
+  stopStatusPolling()
 })
 </script>
 

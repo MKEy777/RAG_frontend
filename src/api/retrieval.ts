@@ -6,6 +6,16 @@ export interface RetrievalRequest {
   top_k?: number
   enable_graph?: boolean
   enable_wiki_boost?: boolean
+  enable_rerank?: boolean
+  expand_parent?: boolean
+  recall_top_k?: number
+  vector_threshold?: number
+  keyword_threshold?: number
+  rrf_k?: number
+  vector_weight?: number
+  keyword_weight?: number
+  rerank_threshold?: number
+  wiki_boost?: number
 }
 
 export interface RetrievalHit {
@@ -20,6 +30,7 @@ export interface RetrievalHit {
 
 export interface RetrievalResponse {
   hits: RetrievalHit[]
+  faq_hits: RetrievalHit[]
 }
 
 export async function retrieve(

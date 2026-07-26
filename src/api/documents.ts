@@ -7,11 +7,14 @@ export interface Document {
   title: string | null
   file_name: string | null
   parse_status: string
+  needs_images?: boolean
 }
 
 export interface DocumentStatus {
   doc_id: string
   parse_status: string
+  graph_status: string | null
+  wiki_status: string | null
   progress: {
     stage: string
     percent: number
@@ -58,4 +61,15 @@ export async function uploadDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   await client.delete(`/documents/${id}`)
+}
+
+export async function importLocalDocument(
+  kbId: string,
+  filePath: string
+): Promise<Document> {
+  const { data } = await client.post('/documents/import-local', {
+    kb_id: kbId,
+    file_path: filePath,
+  })
+  return data
 }

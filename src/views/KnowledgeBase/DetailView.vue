@@ -132,7 +132,7 @@ const pagination = reactive({
 })
 
 const columns: TableProps['columns'] = [
-  { colKey: 'file_name', title: '文件名', ellipsis: true },
+  { colKey: 'file_name', title: '文件名', width: 320, ellipsis: true },
   { colKey: 'parse_status', title: '状态', width: 120 },
   { colKey: 'op', title: '操作', width: 100, align: 'center' },
 ]
