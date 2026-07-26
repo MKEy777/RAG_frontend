@@ -96,3 +96,8 @@ export async function importLocalDocument(
   })
   return data
 }
+
+export async function importUrl(kbId: string, url: string, title?: string): Promise<Document> {
+  const { data } = await client.post('/documents/import-url', { kb_id: kbId, url, title })
+  return data
+}

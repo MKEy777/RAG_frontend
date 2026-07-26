@@ -42,6 +42,10 @@
           <template #icon><t-icon name="setting" /></template>
           RAG 配置
         </t-button>
+        <t-button variant="outline" @click="urlDialogVisible = true">
+          <template #icon><t-icon name="link" /></template>
+          从 URL 导入
+        </t-button>
       </template>
     </PageHeader>
 
@@ -182,6 +186,10 @@
         </t-form-item>
       </t-form>
     </t-dialog>
+
+    <t-dialog v-model:visible="urlDialogVisible" header="从 URL 导入" width="480px" :confirm-btn="{ loading: urlImporting }" @confirm="handleImportUrl">
+      <t-input v-model="importUrlValue" placeholder="https://..." />
+    </t-dialog>
   </div>
 </template>
 
@@ -200,6 +208,7 @@ import {
   renameDocument,
   reparseDocument,
   documentDownloadUrl,
+  importUrl,
   type Document,
 } from '@/api/documents'
 import { statusTheme, statusText } from '@/utils/format'
@@ -237,6 +246,26 @@ const settingsForm = reactive({
 })
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+
+const urlDialogVisible = ref(false)
+const importUrlValue = ref('')
+const urlImporting = ref(false)
+
+async function handleImportUrl() {
+  if (!importUrlValue.value) return
+  urlImporting.value = true
+  try {
+    await importUrl(kbId, importUrlValue.value)
+    urlDialogVisible.value = false
+    importUrlValue.value = ''
+    MessagePlugin.success('URL 导入已提交')
+    await fetchDocuments()
+  } catch (e: any) {
+    MessagePlugin.error(e?.response?.data?.message || 'URL 导入失败')
+  } finally {
+    urlImporting.value = false
+  }
+}
 
 const processingCount = computed(
   () => documents.value.filter((d) => d.parse_status === 'processing').length
