@@ -37,3 +37,14 @@ export async function getGraph(
   })
   return data
 }
+
+export async function rebuildGraph(
+  kbId: string
+): Promise<{ status: string; documents: number }> {
+  const { data } = await client.post(`/graph/${kbId}/rebuild`)
+  return data
+}
+
+export async function deleteGraph(kbId: string): Promise<void> {
+  await client.delete(`/graph/${kbId}`)
+}

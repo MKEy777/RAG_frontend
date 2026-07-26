@@ -1,118 +1,209 @@
 <template>
   <div class="kb-detail">
-    <!-- 隐藏的文件输入框 -->
     <input
       ref="fileInput"
       type="file"
       multiple
       style="display: none"
-      accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.md,.txt,.csv"
+      accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.md,.txt,.csv,.zip"
       @change="handleFileSelect"
     />
+    <input
+      ref="folderInputRef"
+      type="file"
+      webkitdirectory
+      multiple
+      style="display: none"
+      @change="handleFolderSelected"
+    />
 
-    <!-- 知识库信息 -->
-    <t-card :bordered="false" class="info-card">
-      <template #title>
-        <div class="card-title">
-          <t-button variant="text" shape="square" @click="goBack">
-            <t-icon name="chevron-left" />
-          </t-button>
-          <span>{{ kb?.name || '加载中...' }}</span>
-        </div>
-      </template>
-      <t-descriptions :column="1" layout="vertical" v-if="kb">
-        <t-descriptions-item label="ID">
-          <span class="kb-id">{{ kb.id }}</span>
-        </t-descriptions-item>
-        <t-descriptions-item label="类型">
-          <t-tag :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light">
-            {{ kb.type === 'document' ? '文档' : 'FAQ' }}
-          </t-tag>
-        </t-descriptions-item>
-        <t-descriptions-item label="描述">{{ kb.description || '-' }}</t-descriptions-item>
-      </t-descriptions>
-      <t-space v-if="kb" class="kb-actions">
-        <t-button variant="outline" @click="goToWiki">
-          <t-icon name="book" /> Wiki
+    <PageHeader
+      :title="kb?.name || '加载中...'"
+      :subtitle="kb?.description || ''"
+      back-to="/knowledge-bases"
+    >
+      <template #actions>
+        <t-tag v-if="kb" :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light">
+          {{ kb.type === 'document' ? '文档' : 'FAQ' }}
+        </t-tag>
+        <t-button v-if="kb?.enable_wiki" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
+          <template #icon><t-icon name="book" /></template>
+          Wiki
         </t-button>
-        <t-button variant="outline" @click="goToGraph">
-          <t-icon name="chart" /> 知识图谱
+        <t-button v-if="kb?.enable_graph" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/graph`)">
+          <template #icon><t-icon name="fork" /></template>
+          知识图谱
         </t-button>
-      </t-space>
-    </t-card>
-
-    <!-- 文档管理 -->
-    <t-card title="文档管理" :bordered="false" class="doc-card">
-      <template #action>
-        <t-button theme="primary" @click="triggerUpload">
-          <template #icon><t-icon name="upload" /></template>
-          上传文档
+        <t-button variant="outline" @click="openSettings">
+          <template #icon><t-icon name="setting" /></template>
+          RAG 配置
         </t-button>
       </template>
+    </PageHeader>
 
-      <!-- 拖拽上传区域 -->
+    <t-card :bordered="false" class="doc-card">
       <div
         class="upload-dropzone"
         :class="{ 'drag-over': isDragOver }"
         @dragover.prevent="isDragOver = true"
         @dragleave.prevent="isDragOver = false"
         @drop.prevent="handleDrop"
-        @click="triggerUpload"
+        @click="fileInput?.click()"
       >
-        <t-icon name="cloud-upload" size="40px" class="upload-icon" />
+        <t-icon name="cloud-upload" size="36px" class="upload-icon" />
         <p class="upload-text">点击或拖拽文件到此处上传</p>
-        <p class="upload-hint">支持 PDF、Word、Excel、PPT、Markdown、TXT 等格式</p>
+        <p class="upload-hint">支持 PDF、Word、Excel、PPT、Markdown、TXT、ZIP 等格式</p>
+      </div>
+
+      <div v-if="processingCount > 0" class="task-bar">
+        <t-loading size="small" />
+        <span>{{ processingCount }} 个文档处理中，完成后自动刷新</span>
+      </div>
+
+      <div v-if="selectedIds.length" class="batch-bar">
+        <span class="batch-count">已选 {{ selectedIds.length }} 项</span>
+        <t-button size="small" variant="outline" :loading="batchWorking" @click="handleBatchReparse">
+          批量重新解析
+        </t-button>
+        <t-popconfirm :content="`确定删除选中的 ${selectedIds.length} 个文档吗？`" @confirm="handleBatchDelete">
+          <t-button size="small" theme="danger" variant="outline" :loading="batchWorking">批量删除</t-button>
+        </t-popconfirm>
+        <t-button size="small" variant="text" @click="selectedIds = []">取消选择</t-button>
       </div>
 
       <t-table
         :data="documents"
         :columns="columns"
-        :loading="docLoading"
+        :loading="docLoading || uploading"
         row-key="id"
+        :selected-row-keys="selectedIds"
         :pagination="pagination"
         @page-change="handlePageChange"
+        @select-change="handleSelectChange"
       >
         <template #parse_status="{ row }">
-          <t-tag :theme="getStatusTheme(row.parse_status)" variant="light">
-            {{ getStatusText(row.parse_status) }}
+          <t-tag
+            :theme="statusTheme(row.parse_status)"
+            variant="light"
+            class="status-tag"
+            @click="openDrawer(row, 'progress')"
+          >
+            <t-loading v-if="row.parse_status === 'processing'" size="12px" style="margin-right: 4px" />
+            {{ statusText(row.parse_status) }}
           </t-tag>
+          <t-link
+            v-if="row.parse_status === 'failed'"
+            theme="danger"
+            size="small"
+            class="reason-link"
+            @click="openDrawer(row, 'progress')"
+          >
+            查看原因
+          </t-link>
         </template>
         <template #op="{ row }">
-          <t-space>
+          <t-space size="0">
+            <t-button variant="text" theme="primary" @click="openDrawer(row, 'info')">详情</t-button>
             <t-button
-              v-if="row.parse_status === 'completed'"
+              v-if="row.parse_status === 'failed'"
+              variant="text"
+              theme="warning"
+              @click="handleReparse(row.id)"
+            >
+              重试
+            </t-button>
+            <t-button
+              v-if="row.needs_images"
               variant="text"
               theme="primary"
-              @click="goToChunks(row.id)"
+              @click="startImageSupplement(row)"
             >
-              切片
+              补充图片
             </t-button>
-            <t-popconfirm
-              content="确定要删除这个文档吗？"
-              @confirm="handleDelete(row.id)"
+            <t-dropdown
+              :options="moreOptions(row)"
+              trigger="click"
+              @click="(item: DropdownItem) => handleMore(String(item.value), row)"
             >
-              <t-button variant="text" theme="danger">删除</t-button>
-            </t-popconfirm>
+              <t-button variant="text" theme="primary">
+                更多
+                <template #suffix><t-icon name="chevron-down" size="14px" /></template>
+              </t-button>
+            </t-dropdown>
           </t-space>
+        </template>
+        <template #empty>
+          <EmptyState text="暂无文档，上传文件开始构建知识库" icon="folder-open" />
         </template>
       </t-table>
     </t-card>
+
+    <DocDetailDrawer
+      v-model:visible="drawerVisible"
+      :doc="drawerDoc"
+      :kb-id="kbId"
+      :initial-tab="drawerTab"
+      @refresh="fetchDocuments"
+    />
+
+    <t-dialog
+      v-model:visible="renameVisible"
+      header="重命名文档"
+      width="420px"
+      :confirm-btn="{ loading: renaming }"
+      @confirm="confirmRename"
+    >
+      <t-input v-model="renameValue" placeholder="输入新名称" @enter="confirmRename" />
+    </t-dialog>
+
+    <t-dialog
+      v-model:visible="settingsVisible"
+      header="RAG 配置"
+      width="480px"
+      :confirm-btn="{ loading: savingSettings }"
+      @confirm="saveSettings"
+    >
+      <t-form :label-width="90">
+        <t-form-item label="名称">
+          <t-input v-model="settingsForm.name" />
+        </t-form-item>
+        <t-form-item label="描述">
+          <t-textarea v-model="settingsForm.description" :autosize="{ minRows: 2, maxRows: 4 }" />
+        </t-form-item>
+        <t-form-item label="Wiki" help="文档解析后自动生成百科页面">
+          <t-switch v-model="settingsForm.enable_wiki" />
+        </t-form-item>
+        <t-form-item label="知识图谱" help="抽取实体关系构建图谱，检索可图谱增强">
+          <t-switch v-model="settingsForm.enable_graph" />
+        </t-form-item>
+        <t-form-item label="问题生成" help="为切片生成 FAQ 问题，提升召回">
+          <t-switch v-model="settingsForm.enable_qa" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
-import type { TableProps } from 'tdesign-vue-next'
-import { getKnowledgeBase, type KnowledgeBase } from '@/api/knowledgeBase'
+import type { TableProps, DropdownOption as DropdownItem } from 'tdesign-vue-next'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import DocDetailDrawer from '@/components/DocDetailDrawer.vue'
+import { getKnowledgeBase, updateKnowledgeBase, type KnowledgeBase } from '@/api/knowledgeBase'
 import {
   listDocuments,
-  uploadDocument,
   deleteDocument,
-  getDocumentStatus,
+  renameDocument,
+  reparseDocument,
+  documentDownloadUrl,
   type Document,
 } from '@/api/documents'
+import { statusTheme, statusText } from '@/utils/format'
+import { useDocStatusStream } from '@/composables/useDocStatusPolling'
+import { useDocUpload } from '@/composables/useDocUpload'
 
 const route = useRoute()
 const router = useRouter()
@@ -123,53 +214,40 @@ const documents = ref<Document[]>([])
 const docLoading = ref(false)
 const isDragOver = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
-let pollTimer: ReturnType<typeof setInterval> | null = null
+const selectedIds = ref<string[]>([])
+const batchWorking = ref(false)
 
-const pagination = reactive({
-  current: 1,
-  pageSize: 20,
-  total: 0,
+const drawerVisible = ref(false)
+const drawerDoc = ref<Document | null>(null)
+const drawerTab = ref('info')
+
+const renameVisible = ref(false)
+const renameValue = ref('')
+const renaming = ref(false)
+let renameTarget: Document | null = null
+
+const settingsVisible = ref(false)
+const savingSettings = ref(false)
+const settingsForm = reactive({
+  name: '',
+  description: '',
+  enable_wiki: true,
+  enable_graph: true,
+  enable_qa: false,
 })
 
+const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
+
+const processingCount = computed(
+  () => documents.value.filter((d) => d.parse_status === 'processing').length
+)
+
 const columns: TableProps['columns'] = [
-  { colKey: 'file_name', title: '文件名', width: 320, ellipsis: true },
-  { colKey: 'parse_status', title: '状态', width: 120 },
-  { colKey: 'op', title: '操作', width: 100, align: 'center' },
+  { colKey: 'row-select', type: 'multiple', width: 46 },
+  { colKey: 'file_name', title: '文件名', ellipsis: true },
+  { colKey: 'parse_status', title: '状态', width: 150 },
+  { colKey: 'op', title: '操作', width: 250, align: 'center' },
 ]
-
-const getStatusTheme = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return 'success'
-    case 'failed':
-      return 'danger'
-    case 'processing':
-      return 'warning'
-    default:
-      return 'default'
-  }
-}
-
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'completed':
-      return '已完成'
-    case 'failed':
-      return '失败'
-    case 'processing':
-      return '处理中'
-    default:
-      return status
-  }
-}
-
-const fetchKb = async () => {
-  try {
-    kb.value = await getKnowledgeBase(kbId)
-  } catch {
-    MessagePlugin.error('获取知识库信息失败')
-  }
-}
 
 const fetchDocuments = async () => {
   docLoading.value = true
@@ -177,11 +255,15 @@ const fetchDocuments = async () => {
     const res = await listDocuments(kbId, pagination.current, pagination.pageSize)
     documents.value = res.items
     pagination.total = res.total
-    startPollingIfNeeded()
+    listPolling.startIfNeeded()
   } finally {
     docLoading.value = false
   }
 }
+
+const listPolling = useDocStatusStream(kbId, () => documents.value, fetchDocuments)
+const { uploading, folderInputRef, uploadFiles, startImageSupplement, handleFolderSelected } =
+  useDocUpload(kbId, fetchDocuments)
 
 const handlePageChange = (pageInfo: { current: number; pageSize: number }) => {
   pagination.current = pageInfo.current
@@ -189,130 +271,183 @@ const handlePageChange = (pageInfo: { current: number; pageSize: number }) => {
   fetchDocuments()
 }
 
-const triggerUpload = () => {
-  fileInput.value?.click()
+const handleSelectChange = (keys: (string | number)[]) => {
+  selectedIds.value = keys as string[]
 }
 
 const handleFileSelect = async (e: Event) => {
   const input = e.target as HTMLInputElement
-  if (!input.files || input.files.length === 0) return
+  if (!input.files?.length) return
   await uploadFiles(Array.from(input.files))
-  input.value = '' // 清空以便重复选择同一文件
+  input.value = ''
 }
 
 const handleDrop = async (e: DragEvent) => {
   isDragOver.value = false
-  if (!e.dataTransfer?.files || e.dataTransfer.files.length === 0) return
+  if (!e.dataTransfer?.files?.length) return
   await uploadFiles(Array.from(e.dataTransfer.files))
 }
 
-const uploadFiles = async (files: File[]) => {
-  for (const file of files) {
-    try {
-      await uploadDocument(kbId, file)
-      MessagePlugin.success(`${file.name} 上传成功`)
-    } catch {
-      MessagePlugin.error(`${file.name} 上传失败`)
-    }
+const openDrawer = (doc: Document, tab: string) => {
+  drawerDoc.value = doc
+  drawerTab.value = tab
+  drawerVisible.value = true
+}
+
+const moreOptions = (row: Document) => {
+  const opts: { content: string; value: string; theme?: string }[] = []
+  if (row.parse_status === 'completed') opts.push({ content: '查看切片', value: 'chunks' })
+  opts.push({ content: '重新解析', value: 'reparse' })
+  opts.push({ content: '重命名', value: 'rename' })
+  opts.push({ content: '下载原文件', value: 'download' })
+  opts.push({ content: '删除', value: 'delete', theme: 'error' })
+  return opts
+}
+
+const handleMore = (action: string, row: Document) => {
+  switch (action) {
+    case 'chunks':
+      router.push(`/knowledge-bases/${kbId}/documents/${row.id}/chunks`)
+      break
+    case 'reparse':
+      handleReparse(row.id)
+      break
+    case 'rename':
+      renameTarget = row
+      renameValue.value = row.title || row.file_name || ''
+      renameVisible.value = true
+      break
+    case 'download':
+      window.open(documentDownloadUrl(row.id), '_blank')
+      break
+    case 'delete':
+      handleDelete(row.id)
+      break
   }
-  fetchDocuments()
+}
+
+const handleReparse = async (docId: string) => {
+  try {
+    await reparseDocument(docId)
+    MessagePlugin.success('已触发重新解析')
+    fetchDocuments()
+  } catch {
+    // client 拦截器已弹错
+  }
+}
+
+const confirmRename = async () => {
+  if (!renameTarget || renaming.value) return
+  const name = renameValue.value.trim()
+  if (!name) {
+    MessagePlugin.warning('名称不能为空')
+    return
+  }
+  renaming.value = true
+  try {
+    await renameDocument(renameTarget.id, name)
+    MessagePlugin.success('重命名成功')
+    renameVisible.value = false
+    fetchDocuments()
+  } catch {
+    // client 拦截器已弹错
+  } finally {
+    renaming.value = false
+  }
 }
 
 const handleDelete = async (docId: string) => {
   try {
     await deleteDocument(docId)
     MessagePlugin.success('删除成功')
+    selectedIds.value = selectedIds.value.filter((id) => id !== docId)
     fetchDocuments()
   } catch {
-    MessagePlugin.error('删除失败')
+    // client 拦截器已弹错
   }
 }
 
-const startPollingIfNeeded = () => {
-  const hasProcessing = documents.value.some((d) => d.parse_status === 'processing')
-
-  if (hasProcessing && !pollTimer) {
-    pollTimer = setInterval(async () => {
-      let needsRefresh = false
-      for (const doc of documents.value) {
-        if (doc.parse_status === 'processing') {
-          try {
-            const status = await getDocumentStatus(doc.id)
-            if (status.parse_status !== 'processing') {
-              needsRefresh = true
-            }
-          } catch {
-            // ignore
-          }
-        }
-      }
-      if (needsRefresh) {
-        fetchDocuments()
-      }
-    }, 3000)
-  } else if (!hasProcessing && pollTimer) {
-    clearInterval(pollTimer)
-    pollTimer = null
+const handleBatchDelete = async () => {
+  batchWorking.value = true
+  try {
+    for (const id of selectedIds.value) {
+      await deleteDocument(id)
+    }
+    MessagePlugin.success(`已删除 ${selectedIds.value.length} 个文档`)
+    selectedIds.value = []
+    fetchDocuments()
+  } catch {
+    fetchDocuments()
+  } finally {
+    batchWorking.value = false
   }
 }
 
-const goBack = () => {
-  router.push('/knowledge-bases')
+const handleBatchReparse = async () => {
+  batchWorking.value = true
+  try {
+    for (const id of selectedIds.value) {
+      await reparseDocument(id)
+    }
+    MessagePlugin.success(`已触发 ${selectedIds.value.length} 个文档重新解析`)
+    selectedIds.value = []
+    fetchDocuments()
+  } catch {
+    fetchDocuments()
+  } finally {
+    batchWorking.value = false
+  }
 }
 
-const goToWiki = () => {
-  router.push(`/knowledge-bases/${kbId}/wiki`)
+const openSettings = () => {
+  if (!kb.value) return
+  settingsForm.name = kb.value.name
+  settingsForm.description = kb.value.description || ''
+  settingsForm.enable_wiki = kb.value.enable_wiki
+  settingsForm.enable_graph = kb.value.enable_graph
+  settingsForm.enable_qa = kb.value.enable_qa
+  settingsVisible.value = true
 }
 
-const goToGraph = () => {
-  router.push(`/knowledge-bases/${kbId}/graph`)
+const saveSettings = async () => {
+  if (savingSettings.value) return
+  savingSettings.value = true
+  try {
+    kb.value = await updateKnowledgeBase(kbId, { ...settingsForm })
+    MessagePlugin.success('配置已保存')
+    settingsVisible.value = false
+  } catch {
+    // client 拦截器已弹错
+  } finally {
+    savingSettings.value = false
+  }
 }
 
-const goToChunks = (docId: string) => {
-  router.push(`/knowledge-bases/${kbId}/documents/${docId}/chunks`)
-}
-
-onMounted(() => {
-  fetchKb()
+onMounted(async () => {
+  try {
+    kb.value = await getKnowledgeBase(kbId)
+  } catch {
+    // client 拦截器已弹错
+  }
   fetchDocuments()
-})
-
-onUnmounted(() => {
-  if (pollTimer) {
-    clearInterval(pollTimer)
-  }
 })
 </script>
 
 <style scoped>
 .kb-detail {
   max-width: 1200px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  margin: 0 auto;
 }
 
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.info-card {
-  margin-bottom: 0;
-}
-
-.kb-id {
-  font-family: monospace;
-  font-size: 13px;
-  word-break: break-all;
-  color: var(--td-text-color-secondary);
+.doc-card {
+  border-radius: var(--td-radius-extraLarge);
+  box-shadow: var(--td-shadow-1);
 }
 
 .upload-dropzone {
-  border: 2px dashed var(--td-border-level-2-color);
-  border-radius: 8px;
-  padding: 32px;
+  border: 2px dashed var(--td-component-border);
+  border-radius: var(--td-radius-large);
+  padding: 28px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
@@ -323,7 +458,7 @@ onUnmounted(() => {
 .upload-dropzone:hover,
 .upload-dropzone.drag-over {
   border-color: var(--td-brand-color);
-  background: var(--td-brand-color-light);
+  background: var(--td-brand-color-1);
 }
 
 .upload-icon {
@@ -346,5 +481,42 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--td-text-color-placeholder);
   margin: 0;
+}
+
+.task-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--td-radius-medium);
+  background: var(--td-gray-color-1);
+  font-size: 13px;
+  color: var(--td-text-color-secondary);
+}
+
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: var(--td-radius-medium);
+  background: var(--td-brand-color-1);
+  font-size: 13px;
+}
+
+.batch-count {
+  color: var(--td-text-color-secondary);
+  margin-right: 4px;
+}
+
+.status-tag {
+  cursor: pointer;
+}
+
+.reason-link {
+  margin-left: 6px;
+  font-size: 12px;
 }
 </style>

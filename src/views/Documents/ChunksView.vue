@@ -1,22 +1,18 @@
 <template>
   <div class="chunks-view">
-    <div class="toolbar">
-      <t-button variant="text" shape="square" @click="goBack">
-        <t-icon name="chevron-left" />
-      </t-button>
-      <span class="toolbar-title">切片详情</span>
-      <t-tag v-if="docTitle" theme="primary" variant="light" size="small">{{ docTitle }}</t-tag>
-      <div class="toolbar-spacer" />
-      <t-select
-        v-model="chunkTypeFilter"
-        :options="typeOptions"
-        placeholder="全部类型"
-        clearable
-        size="small"
-        style="width: 140px"
-        @change="handleTypeChange"
-      />
-    </div>
+    <PageHeader title="切片详情" :subtitle="docTitle" :back-to="`/knowledge-bases/${kbId}`">
+      <template #actions>
+        <t-select
+          v-model="chunkTypeFilter"
+          :options="typeOptions"
+          placeholder="全部类型"
+          clearable
+          size="small"
+          style="width: 140px"
+          @change="handleTypeChange"
+        />
+      </template>
+    </PageHeader>
 
     <div class="split">
       <div class="pane source-pane">
@@ -97,13 +93,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getDocument } from '@/api/documents'
 import { listChunks, getDocumentContent, type Chunk } from '@/api/chunks'
+import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
-const router = useRouter()
 const kbId = route.params.id as string
 const docId = route.params.docId as string
 
@@ -225,10 +221,6 @@ const copyChunk = async (c: Chunk) => {
   }
 }
 
-const goBack = () => {
-  router.push(`/knowledge-bases/${kbId}`)
-}
-
 onMounted(() => {
   fetchDocTitle()
   fetchSource()
@@ -241,22 +233,7 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.toolbar-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.toolbar-spacer {
-  flex: 1;
+  padding: 24px 32px 16px;
 }
 
 .split {
@@ -264,7 +241,6 @@ onMounted(() => {
   gap: 16px;
   flex: 1;
   min-height: 0;
-  height: calc(100vh - 180px);
 }
 
 .pane {
@@ -272,8 +248,9 @@ onMounted(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: var(--td-radius-medium);
+  background: var(--td-bg-color-container);
+  border: 1px solid var(--td-component-stroke);
+  border-radius: var(--td-radius-large);
 }
 
 .pane-header {
@@ -307,10 +284,10 @@ onMounted(() => {
 }
 
 .hl-mark {
-  background: rgba(0, 82, 217, 0.16);
+  background: color-mix(in srgb, var(--td-brand-color) 18%, transparent);
   color: inherit;
-  border-radius: 2px;
-  box-shadow: 0 0 0 2px rgba(0, 82, 217, 0.16);
+  border-radius: var(--td-radius-small);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-brand-color) 18%, transparent);
 }
 
 .chunk-list {
@@ -322,7 +299,7 @@ onMounted(() => {
 .chunk-item {
   padding: 10px 12px;
   border: 1px solid var(--td-border-level-1-color);
-  border-radius: 6px;
+  border-radius: var(--td-radius-medium);
   cursor: pointer;
   transition: all 0.15s;
 }

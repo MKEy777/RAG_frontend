@@ -1,122 +1,240 @@
 <template>
-  <t-layout class="layout">
-    <t-aside class="layout-aside">
-      <div class="logo">
-        <span class="logo-text">PyRAG</span>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo" @click="router.push('/chat')">
+        <div class="logo-mark">KL</div>
+        <span class="logo-text">KnowLink</span>
       </div>
-      <t-menu
-        :value="activeMenu"
-        :collapsed="collapsed"
-        @change="handleMenuChange"
-      >
-        <t-menu-item value="/knowledge-bases">
-          <template #icon>
-            <t-icon name="server" />
-          </template>
-          知识库管理
-        </t-menu-item>
-        <t-menu-item value="/wiki">
-          <template #icon>
-            <t-icon name="book" />
-          </template>
-          Wiki
-        </t-menu-item>
-        <t-menu-item value="/graph">
-          <template #icon>
-            <t-icon name="fork" />
-          </template>
-          知识图谱
-        </t-menu-item>
-        <t-menu-item value="/retrieval">
-          <template #icon>
-            <t-icon name="search" />
-          </template>
-          检索测试
-        </t-menu-item>
-      </t-menu>
-    </t-aside>
-    <t-layout>
-      <t-header class="layout-header">
-        <t-button variant="text" shape="square" @click="collapsed = !collapsed">
-          <t-icon :name="collapsed ? 'menu-unfold' : 'menu-fold'" />
-        </t-button>
-        <span class="header-title">{{ currentTitle }}</span>
-      </t-header>
-      <t-content class="layout-content">
-        <router-view />
-      </t-content>
-    </t-layout>
-  </t-layout>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item" @click="handleNewChat">
+          <t-icon name="edit-1" size="18px" />
+          <span>新对话</span>
+        </div>
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-item"
+          :class="{ active: isActive(item.path) }"
+        >
+          <t-icon :name="item.icon" size="18px" />
+          <span>{{ item.label }}</span>
+        </router-link>
+      </nav>
+
+      <div v-if="chatStore.sorted.length" class="session-section">
+        <div class="session-label">最近对话</div>
+        <div class="session-list">
+          <div
+            v-for="session in chatStore.sorted"
+            :key="session.id"
+            class="session-item"
+            :class="{ active: session.id === chatStore.activeId && route.path === '/chat' }"
+            @click="handleOpenSession(session.id)"
+          >
+            <span class="session-title">{{ session.title }}</span>
+            <span class="session-delete" @click.stop="handleDeleteSession(session.id)">
+              <t-icon name="delete" size="14px" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="layout-content" :class="{ 'no-pad': route.meta.fullHeight }">
+      <router-view />
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useChatStore } from '@/stores/chat'
 
 const router = useRouter()
 const route = useRoute()
-const collapsed = ref(false)
+const chatStore = useChatStore()
 
-const activeMenu = computed(() => {
-  const path = route.path
-  if (path.includes('/wiki')) return '/wiki'
-  if (path.includes('/graph')) return '/graph'
-  if (path.startsWith('/knowledge-bases')) return '/knowledge-bases'
-  if (path.startsWith('/retrieval')) return '/retrieval'
-  return path
-})
+const navItems = [
+  { path: '/chat', icon: 'chat', label: '聊天问答' },
+  { path: '/knowledge-bases', icon: 'server', label: '知识库' },
+  { path: '/retrieval', icon: 'search', label: '检索测试' },
+  { path: '/faq', icon: 'help-circle', label: 'FAQ 管理' },
+]
 
-const currentTitle = computed(() => {
-  return (route.meta.title as string) || 'PyRAG'
-})
+const isActive = (path: string) =>
+  path === '/chat' ? route.path === '/chat' : route.path.startsWith(path)
 
-const handleMenuChange = (value: string) => {
-  router.push(value)
+const handleNewChat = () => {
+  chatStore.activeId = ''
+  router.push('/chat')
+}
+
+const handleOpenSession = (id: string) => {
+  chatStore.activeId = id
+  router.push('/chat')
+}
+
+const handleDeleteSession = (id: string) => {
+  chatStore.removeSession(id)
 }
 </script>
 
 <style scoped>
 .layout {
+  display: flex;
   height: 100vh;
+  overflow: hidden;
 }
 
-.layout-aside {
-  background: #fff;
-  border-right: 1px solid var(--td-border-level-1-color);
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--td-bg-color-sidebar);
+  padding: 14px 10px;
+  gap: 14px;
 }
 
-.logo {
-  height: 64px;
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.logo-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--td-radius-medium);
+  background: var(--td-brand-color);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-bottom: 1px solid var(--td-border-level-1-color);
 }
 
 .logo-text {
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--td-brand-color);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--td-text-color-primary);
 }
 
-.layout-header {
-  height: 64px;
-  background: #fff;
-  border-bottom: 1px solid var(--td-border-level-1-color);
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 12px;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: var(--td-radius-medium);
+  font-size: 14px;
+  color: var(--td-text-color-primary);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.header-title {
-  font-size: 16px;
+.nav-item:hover {
+  background: var(--td-gray-color-3);
+}
+
+.nav-item.active {
+  background: var(--td-gray-color-3);
+  font-weight: 600;
+}
+
+.session-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.session-label {
+  font-size: 12px;
   font-weight: 500;
+  color: var(--td-text-color-placeholder);
+  padding: 0 10px 4px;
+}
+
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.session-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--td-radius-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.session-item:hover {
+  background: var(--td-gray-color-3);
+}
+
+.session-item.active {
+  background: var(--td-gray-color-3);
+}
+
+.session-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--td-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-delete {
+  display: inline-flex;
+  align-items: center;
+  color: var(--td-text-color-placeholder);
+  flex-shrink: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.session-item:hover .session-delete {
+  opacity: 1;
+}
+
+.session-delete:hover {
+  color: var(--td-error-color);
 }
 
 .layout-content {
-  padding: 24px;
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
   background: var(--td-bg-color-page);
-  overflow: auto;
+  padding: 24px 32px;
+}
+
+.layout-content.no-pad {
+  padding: 0;
+  overflow-y: hidden;
 }
 </style>

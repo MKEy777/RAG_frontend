@@ -7,6 +7,15 @@ export interface KnowledgeBase {
   description: string | null
   enable_wiki: boolean
   enable_graph: boolean
+  enable_qa: boolean
+}
+
+export interface KBUpdateParams {
+  name?: string
+  description?: string
+  enable_wiki?: boolean
+  enable_graph?: boolean
+  enable_qa?: boolean
 }
 
 export interface KBCreateParams {
@@ -46,6 +55,14 @@ export async function createKnowledgeBase(
   params: KBCreateParams
 ): Promise<KnowledgeBase> {
   const { data } = await client.post('/knowledge-bases', params)
+  return data
+}
+
+export async function updateKnowledgeBase(
+  id: string,
+  params: KBUpdateParams
+): Promise<KnowledgeBase> {
+  const { data } = await client.patch(`/knowledge-bases/${id}`, params)
   return data
 }
 

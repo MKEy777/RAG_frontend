@@ -1,18 +1,16 @@
 <template>
   <div class="wiki-view">
-    <div class="toolbar">
-      <t-button variant="text" shape="square" @click="router.back()">
-        <t-icon name="chevron-left" />
-      </t-button>
-      <span class="toolbar-title">Wiki</span>
-      <t-select
-        v-model="kbId"
-        :options="kbOptions"
-        placeholder="选择知识库"
-        style="width: 240px"
-        @change="handleKbChange"
-      />
-    </div>
+    <PageHeader title="Wiki" subtitle="知识库自动生成的百科页面" back-to="">
+      <template #actions>
+        <t-select
+          v-model="kbId"
+          :options="kbOptions"
+          placeholder="选择知识库"
+          style="width: 240px"
+          @change="handleKbChange"
+        />
+      </template>
+    </PageHeader>
     <t-alert
       v-if="kbId && !featureEnabled"
       theme="warning"
@@ -36,6 +34,29 @@
           <t-empty v-if="pages.length === 0 && !loading" description="暂无 Wiki 页面" />
 
           <div v-else class="page-list">
+            <div v-if="folderTree.length > 0" class="page-group">
+              <div class="group-label">目录</div>
+              <div
+                class="page-item"
+                :class="{ active: folderFilter === null }"
+                @click="folderFilter = null"
+              >
+                全部页面
+              </div>
+              <div
+                v-for="folder in folderTree"
+                :key="folder.id"
+                class="page-item folder-item"
+                :class="{ active: folderFilter === folder.id }"
+                :style="{ paddingLeft: `${8 + folder.depth * 14}px` }"
+                @click="folderFilter = folderFilter === folder.id ? null : folder.id"
+              >
+                <t-icon name="folder" size="14px" />
+                <span class="folder-name">{{ folder.name }}</span>
+                <span class="folder-count">{{ folder.page_count }}</span>
+              </div>
+            </div>
+
             <div v-for="group in groupedPages" :key="group.kind" class="page-group">
               <div class="group-label">{{ kindLabels[group.kind] || group.kind }}</div>
               <div
@@ -73,7 +94,7 @@
               <t-empty description="请从左侧选择一个 Wiki 页面" />
             </div>
 
-            <div v-else class="wiki-content" v-html="renderedContent" />
+            <div v-else class="wiki-content" v-html="renderedContent" @click="handleContentClick" />
           </t-loading>
         </t-card>
       </t-col>
@@ -83,21 +104,23 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { marked } from 'marked'
+import { renderWikiMarkdown } from '@/utils/markdown'
 import { listKnowledgeBases, type KnowledgeBase } from '@/api/knowledgeBase'
+import PageHeader from '@/components/PageHeader.vue'
 import {
   listWikiPages,
   getWikiPage,
   buildWiki,
   getWikiStatus,
+  getWikiIndex,
   type WikiPageSummary,
   type WikiPageDetail,
+  type WikiIndexFolder,
 } from '@/api/wiki'
 
 const route = useRoute()
-const router = useRouter()
 const kbId = ref((route.params.id as string) || '')
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const kbList = ref<KnowledgeBase[]>([])
@@ -108,6 +131,8 @@ const featureEnabled = computed(() => {
 })
 
 const pages = ref<WikiPageSummary[]>([])
+const folders = ref<WikiIndexFolder[]>([])
+const folderFilter = ref<string | null>(null)
 const selected = ref<WikiPageDetail | null>(null)
 const loading = ref(false)
 const contentLoading = ref(false)
@@ -128,7 +153,10 @@ const groupedPages = computed(() => {
   const map = new Map<string, WikiPageSummary[]>()
   const order = ['index', 'overview', 'concept', 'entity', 'synthesis', 'comparison']
   for (const kind of order) map.set(kind, [])
-  for (const p of pages.value) {
+  const visible = folderFilter.value
+    ? pages.value.filter((p) => p.folder_id === folderFilter.value)
+    : pages.value
+  for (const p of visible) {
     const list = map.get(p.kind)
     if (list) list.push(p)
     else map.set(p.kind, [p])
@@ -138,17 +166,52 @@ const groupedPages = computed(() => {
     .map(([kind, items]) => ({ kind, items }))
 })
 
+interface FolderNode extends WikiIndexFolder {
+  depth: number
+}
+
+const folderTree = computed<FolderNode[]>(() => {
+  const byParent = new Map<string | null, WikiIndexFolder[]>()
+  for (const f of folders.value) {
+    const list = byParent.get(f.parent_id) || []
+    list.push(f)
+    byParent.set(f.parent_id, list)
+  }
+  const out: FolderNode[] = []
+  const walk = (pid: string | null, depth: number) => {
+    for (const f of byParent.get(pid) || []) {
+      out.push({ ...f, depth })
+      walk(f.id, depth + 1)
+    }
+  }
+  walk(null, 0)
+  return out
+})
+
 const renderedContent = computed(() => {
   if (!selected.value?.content) return ''
-  return marked.parse(selected.value.content, { async: false }) as string
+  return renderWikiMarkdown(selected.value.content)
 })
+
+const handleContentClick = (e: MouseEvent) => {
+  const el = (e.target as HTMLElement).closest('[data-wiki-slug]')
+  if (!el) return
+  const slug = el.getAttribute('data-wiki-slug') || ''
+  const page = pages.value.find((p) => p.slug === slug)
+  if (page) selectPage(page)
+  else MessagePlugin.warning(`页面不存在: ${slug}`)
+}
 
 const fetchPages = async () => {
   if (!kbId.value) return
   loading.value = true
   try {
-    const res = await listWikiPages(kbId.value, 1, 200)
+    const [res, index] = await Promise.all([
+      listWikiPages(kbId.value, 1, 200),
+      getWikiIndex(kbId.value).catch(() => null),
+    ])
     pages.value = res.items
+    folders.value = index?.folders || []
   } finally {
     loading.value = false
   }
@@ -157,6 +220,7 @@ const fetchPages = async () => {
 const handleKbChange = () => {
   selected.value = null
   statusInfo.value = null
+  folderFilter.value = null
   if (pollTimer) {
     clearInterval(pollTimer)
     pollTimer = null
@@ -230,20 +294,8 @@ onUnmounted(() => {
 
 <style scoped>
 .wiki-view {
-  height: 100%;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.toolbar-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-right: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .sidebar-card {
@@ -273,7 +325,7 @@ onUnmounted(() => {
   padding: 6px 8px;
   font-size: 13px;
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--td-radius-default);
   transition: all 0.15s;
 }
 
@@ -285,6 +337,25 @@ onUnmounted(() => {
   background: var(--td-brand-color-light);
   color: var(--td-brand-color);
   font-weight: 500;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-count {
+  font-size: 11px;
+  color: var(--td-text-color-placeholder);
 }
 
 .status-bar {
@@ -326,14 +397,14 @@ onUnmounted(() => {
 .wiki-content :deep(code) {
   background: var(--td-bg-color-secondarycontainer);
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--td-radius-small);
   font-size: 13px;
 }
 
 .wiki-content :deep(pre) {
   background: var(--td-bg-color-secondarycontainer);
   padding: 16px;
-  border-radius: 6px;
+  border-radius: var(--td-radius-medium);
   overflow-x: auto;
   margin-bottom: 16px;
 }
@@ -354,5 +425,16 @@ onUnmounted(() => {
   padding-left: 12px;
   margin-left: 0;
   color: var(--td-text-color-secondary);
+}
+
+.wiki-content :deep(a.wiki-link) {
+  color: var(--td-brand-color);
+  cursor: pointer;
+  text-decoration: none;
+  border-bottom: 1px dashed var(--td-brand-color);
+}
+
+.wiki-content :deep(a.wiki-link:hover) {
+  background: var(--td-brand-color-light);
 }
 </style>

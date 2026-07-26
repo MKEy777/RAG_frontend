@@ -26,6 +26,25 @@ export interface WikiStatus {
   pending_count: number
 }
 
+export interface WikiIndexFolder {
+  id: string
+  name: string
+  parent_id: string | null
+  page_count: number
+}
+
+export interface WikiIndexGroup {
+  type: string
+  total: number
+  items: { slug: string; title: string; summary: string; folder_id: string | null }[]
+}
+
+export interface WikiIndexPayload {
+  intro: string
+  groups: WikiIndexGroup[]
+  folders: WikiIndexFolder[]
+}
+
 export async function listWikiPages(
   kbId: string,
   page = 1,
@@ -52,5 +71,10 @@ export async function buildWiki(kbId: string): Promise<{ status: string }> {
 
 export async function getWikiStatus(kbId: string): Promise<WikiStatus> {
   const { data } = await client.get(`/wiki/${kbId}/status`)
+  return data
+}
+
+export async function getWikiIndex(kbId: string): Promise<WikiIndexPayload> {
+  const { data } = await client.get(`/wiki/${kbId}/index`)
   return data
 }

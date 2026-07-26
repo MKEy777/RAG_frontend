@@ -1,0 +1,71 @@
+import { ref } from 'vue'
+import { streamChat } from '@/api/chat'
+import { useChatStore, type ChatSession } from '@/stores/chat'
+
+const HISTORY_LIMIT = 20
+
+export function useChatStream() {
+  const store = useChatStore()
+  const isStreaming = ref(false)
+  let controller: AbortController | null = null
+  let generation = 0
+
+  const send = async (session: ChatSession, query: string) => {
+    const gen = ++generation
+    const history = session.messages
+      .filter((m) => m.complete && !m.error)
+      .slice(-HISTORY_LIMIT)
+      .map((m) => ({ role: m.role, content: m.content }))
+
+    session.messages.push({ role: 'user', content: query, complete: true })
+    session.messages.push({ role: 'assistant', content: '', complete: false })
+    const msg = session.messages[session.messages.length - 1]
+    if (session.title === '新对话') session.title = query.slice(0, 30)
+    store.touch(session)
+    store.persist()
+
+    isStreaming.value = true
+    controller = new AbortController()
+    try {
+      await streamChat(
+        {
+          kb_ids: session.kbIds,
+          query,
+          history,
+          enable_wiki_boost: session.enableWikiBoost,
+        },
+        {
+          onToken: (token) => {
+            if (gen === generation) msg.content += token
+          },
+          onReferences: (references) => {
+            if (gen === generation) msg.references = references
+          },
+          onDone: () => {
+            if (gen === generation) msg.complete = true
+          },
+        },
+        controller.signal
+      )
+    } catch (e) {
+      if (gen === generation && !msg.complete) {
+        const aborted = (e as Error).name === 'AbortError'
+        if (!aborted) msg.error = (e as Error).message || '请求失败'
+      }
+    } finally {
+      if (gen === generation) {
+        msg.complete = true
+        isStreaming.value = false
+        store.touch(session)
+        store.persist(true)
+      }
+    }
+  }
+
+  const stop = () => {
+    controller?.abort()
+    controller = null
+  }
+
+  return { isStreaming, send, stop }
+}
