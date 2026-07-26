@@ -26,6 +26,10 @@
         <t-tag v-if="kb" :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light">
           {{ kb.type === 'document' ? '文档' : 'FAQ' }}
         </t-tag>
+        <t-button variant="outline" @click="router.push(`/knowledge-bases/${kbId}/chunks`)">
+          <template #icon><t-icon name="view-module" /></template>
+          切片检查
+        </t-button>
         <t-button v-if="kb?.enable_wiki" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
           <template #icon><t-icon name="book" /></template>
           Wiki
@@ -170,14 +174,11 @@
         <t-form-item label="描述">
           <t-textarea v-model="settingsForm.description" :autosize="{ minRows: 2, maxRows: 4 }" />
         </t-form-item>
-        <t-form-item label="Wiki" help="文档解析后自动生成百科页面">
+        <t-form-item label="Wiki" help="文档解析后自动生成百科页面，并为切片生成 FAQ 问句提升召回">
           <t-switch v-model="settingsForm.enable_wiki" />
         </t-form-item>
         <t-form-item label="知识图谱" help="抽取实体关系构建图谱，检索可图谱增强">
           <t-switch v-model="settingsForm.enable_graph" />
-        </t-form-item>
-        <t-form-item label="问题生成" help="为切片生成 FAQ 问题，提升召回">
-          <t-switch v-model="settingsForm.enable_qa" />
         </t-form-item>
       </t-form>
     </t-dialog>
@@ -233,7 +234,6 @@ const settingsForm = reactive({
   description: '',
   enable_wiki: true,
   enable_graph: true,
-  enable_qa: false,
 })
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
@@ -405,7 +405,6 @@ const openSettings = () => {
   settingsForm.description = kb.value.description || ''
   settingsForm.enable_wiki = kb.value.enable_wiki
   settingsForm.enable_graph = kb.value.enable_graph
-  settingsForm.enable_qa = kb.value.enable_qa
   settingsVisible.value = true
 }
 

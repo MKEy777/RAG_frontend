@@ -1,6 +1,10 @@
 <template>
   <div class="chunks-view">
-    <PageHeader title="切片详情" :subtitle="docTitle" :back-to="`/knowledge-bases/${kbId}`">
+    <PageHeader
+      :title="kbMode ? '切片检查' : '切片详情'"
+      :subtitle="docTitle"
+      :back-to="`/knowledge-bases/${kbId}`"
+    >
       <template #actions>
         <t-select
           v-model="chunkTypeFilter"
@@ -15,6 +19,38 @@
     </PageHeader>
 
     <div class="split">
+      <div v-if="kbMode" class="pane files-pane">
+        <div class="pane-header">
+          文件
+          <t-tag variant="light" size="small">{{ docs.length }}</t-tag>
+        </div>
+        <div class="pane-body files-body">
+          <t-loading :loading="docsLoading" style="min-height: 120px">
+            <t-empty v-if="!docsLoading && docs.length === 0" description="暂无文档" />
+            <div v-else class="file-list">
+              <div
+                v-for="d in docs"
+                :key="d.id"
+                class="file-item"
+                :class="{ active: d.id === activeDocId, disabled: d.parse_status !== 'completed' }"
+                @click="selectDoc(d)"
+              >
+                <t-icon name="file" size="14px" class="file-icon" />
+                <span class="file-name">{{ d.file_name || d.title }}</span>
+                <t-tag
+                  v-if="d.parse_status !== 'completed'"
+                  :theme="statusTheme(d.parse_status)"
+                  variant="light"
+                  size="small"
+                >
+                  {{ statusText(d.parse_status) }}
+                </t-tag>
+              </div>
+            </div>
+          </t-loading>
+        </div>
+      </div>
+
       <div class="pane source-pane">
         <div class="pane-header">
           解析后源文
@@ -32,7 +68,7 @@
           <t-loading :loading="sourceLoading" style="min-height: 200px">
             <t-empty
               v-if="!sourceLoading && !sourceContent"
-              description="暂无源文本（文档可能尚未解析完成）"
+              :description="activeDocId ? '暂无源文本（文档可能尚未解析完成）' : '请在左侧选择文件'"
             />
             <pre v-else class="source-pre"><span>{{ hl.before }}</span><mark v-if="hl.mid" ref="hlMark" class="hl-mark">{{ hl.mid }}</mark><span>{{ hl.after }}</span></pre>
           </t-loading>
@@ -95,14 +131,19 @@
 import { ref, reactive, computed, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
-import { getDocument } from '@/api/documents'
+import { getDocument, listDocuments, type Document } from '@/api/documents'
 import { listChunks, getDocumentContent, type Chunk } from '@/api/chunks'
+import { statusTheme, statusText } from '@/utils/format'
 import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
 const kbId = route.params.id as string
-const docId = route.params.docId as string
+const routeDocId = (route.params.docId as string) || ''
+const kbMode = !routeDocId
 
+const activeDocId = ref(routeDocId)
+const docs = ref<Document[]>([])
+const docsLoading = ref(false)
 const docTitle = ref('')
 const chunks = ref<Chunk[]>([])
 const loading = ref(false)
@@ -154,19 +195,11 @@ const getTypeText = (type?: string) => {
   }
 }
 
-const fetchDocTitle = async () => {
-  try {
-    const doc = await getDocument(docId)
-    docTitle.value = doc.title || doc.file_name || ''
-  } catch {
-    // ignore
-  }
-}
-
 const fetchSource = async () => {
+  if (!activeDocId.value) return
   sourceLoading.value = true
   try {
-    const res = await getDocumentContent(docId)
+    const res = await getDocumentContent(activeDocId.value)
     sourceContent.value = res.content
   } catch {
     sourceContent.value = ''
@@ -176,14 +209,32 @@ const fetchSource = async () => {
 }
 
 const fetchChunks = async () => {
+  if (!activeDocId.value) return
   loading.value = true
   try {
-    const res = await listChunks(docId, pagination.current, pagination.pageSize, chunkTypeFilter.value)
+    const res = await listChunks(activeDocId.value, pagination.current, pagination.pageSize, chunkTypeFilter.value)
     chunks.value = res.items
     pagination.total = res.total
   } finally {
     loading.value = false
   }
+}
+
+const loadDoc = () => {
+  selected.value = null
+  sourceContent.value = ''
+  chunks.value = []
+  pagination.current = 1
+  pagination.total = 0
+  fetchSource()
+  fetchChunks()
+}
+
+const selectDoc = (d: Document) => {
+  if (d.parse_status !== 'completed' || d.id === activeDocId.value) return
+  activeDocId.value = d.id
+  docTitle.value = d.file_name || d.title || ''
+  loadDoc()
 }
 
 const selectChunk = async (c: Chunk) => {
@@ -221,10 +272,26 @@ const copyChunk = async (c: Chunk) => {
   }
 }
 
-onMounted(() => {
-  fetchDocTitle()
-  fetchSource()
-  fetchChunks()
+onMounted(async () => {
+  if (kbMode) {
+    docsLoading.value = true
+    try {
+      const res = await listDocuments(kbId, 1, 100)
+      docs.value = res.items
+      const first = res.items.find((d) => d.parse_status === 'completed')
+      if (first) selectDoc(first)
+    } finally {
+      docsLoading.value = false
+    }
+  } else {
+    try {
+      const doc = await getDocument(routeDocId)
+      docTitle.value = doc.title || doc.file_name || ''
+    } catch {
+      // ignore
+    }
+    loadDoc()
+  }
 })
 </script>
 
@@ -253,6 +320,59 @@ onMounted(() => {
   border-radius: var(--td-radius-large);
 }
 
+.files-pane {
+  flex: none;
+  width: 240px;
+}
+
+.files-body {
+  padding: 8px;
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--td-radius-medium);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.file-item:hover {
+  background: var(--td-bg-color-container-hover);
+}
+
+.file-item.active {
+  background: var(--td-gray-color-3);
+  font-weight: 600;
+}
+
+.file-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.file-icon {
+  color: var(--td-text-color-placeholder);
+  flex-shrink: 0;
+}
+
+.file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pane-header {
   display: flex;
   align-items: center;
@@ -267,6 +387,10 @@ onMounted(() => {
   flex: 1;
   overflow: auto;
   padding: 12px 16px;
+}
+
+.files-pane .pane-body {
+  padding: 8px;
 }
 
 .pane-footer {

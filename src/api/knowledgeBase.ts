@@ -7,7 +7,6 @@ export interface KnowledgeBase {
   description: string | null
   enable_wiki: boolean
   enable_graph: boolean
-  enable_qa: boolean
 }
 
 export interface KBUpdateParams {
@@ -15,7 +14,6 @@ export interface KBUpdateParams {
   description?: string
   enable_wiki?: boolean
   enable_graph?: boolean
-  enable_qa?: boolean
 }
 
 export interface KBCreateParams {
