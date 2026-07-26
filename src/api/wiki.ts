@@ -78,3 +78,12 @@ export async function getWikiIndex(kbId: string): Promise<WikiIndexPayload> {
   const { data } = await client.get(`/wiki/${kbId}/index`)
   return data
 }
+
+export async function updateWikiPage(
+  kbId: string,
+  pageId: string,
+  body: { title?: string; content?: string; folder_id?: string }
+): Promise<{ status: string; version: number }> {
+  const { data } = await client.put(`/wiki/${kbId}/pages/${pageId}`, body)
+  return data
+}
