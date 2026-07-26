@@ -25,12 +25,14 @@
             <t-icon name="server" size="20px" />
           </div>
           <span class="kb-card-name">{{ kb.name }}</span>
-          <t-popconfirm
-            content="确定要删除这个知识库吗？删除后无法恢复。"
-            @confirm="handleDelete(kb.id)"
-          >
-            <t-icon name="delete" class="kb-card-delete" @click.stop />
-          </t-popconfirm>
+          <span @click.stop>
+            <t-popconfirm
+              content="确定要删除这个知识库吗？删除后无法恢复。"
+              @confirm="handleDelete(kb.id)"
+            >
+              <t-icon name="delete" class="kb-card-delete" />
+            </t-popconfirm>
+          </span>
         </div>
         <p class="kb-card-desc">{{ kb.description || '暂无描述' }}</p>
         <div class="kb-card-foot">
@@ -245,12 +247,7 @@ onMounted(fetchData)
 
 .kb-card-delete {
   color: var(--td-text-color-placeholder);
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.kb-card:hover .kb-card-delete {
-  opacity: 1;
+  transition: color 0.15s ease;
 }
 
 .kb-card-delete:hover {

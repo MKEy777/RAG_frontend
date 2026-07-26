@@ -89,6 +89,12 @@
         @page-change="handlePageChange"
         @select-change="handleSelectChange"
       >
+        <template #file_name="{ row }">
+          <span
+            class="file-name-link"
+            @click="row.parse_status === 'completed' && router.push(`/knowledge-bases/${kbId}/documents/${row.id}/chunks`)"
+          >{{ row.file_name || row.title }}</span>
+        </template>
         <template #parse_status="{ row }">
           <t-tag
             :theme="statusTheme(row.parse_status)"
@@ -546,5 +552,16 @@ onMounted(async () => {
 .reason-link {
   margin-left: 6px;
   font-size: 12px;
+}
+
+.file-name-link {
+  cursor: pointer;
+  color: var(--td-text-color-primary);
+  transition: color 0.15s;
+}
+
+.file-name-link:hover {
+  color: var(--td-brand-color);
+  text-decoration: underline;
 }
 </style>

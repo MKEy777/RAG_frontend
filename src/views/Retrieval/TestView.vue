@@ -3,9 +3,9 @@
     <PageHeader title="检索测试" subtitle="调试混合检索与重排效果" />
     <t-row :gutter="16">
       <!-- 左侧：查询输入 -->
-      <t-col :span="4">
-        <t-card title="查询配置" :bordered="false">
-          <t-form :data="formData" :label-width="80">
+      <t-col :span="searching || hits.length > 0 || faqHits.length > 0 ? 4 : 12">
+        <t-card title="查询配置" :bordered="false" class="config-card">
+          <t-form :data="formData" :label-width="72" class="compact-form">
             <t-form-item label="知识库">
               <t-select
                 v-model="formData.kb_ids"
@@ -16,11 +16,23 @@
               />
             </t-form-item>
             <t-form-item label="查询文本">
-              <t-textarea
-                v-model="formData.query"
-                placeholder="请输入查询内容"
-                :autosize="{ minRows: 3, maxRows: 6 }"
-              />
+              <div class="query-row">
+                <t-textarea
+                  v-model="formData.query"
+                  placeholder="请输入查询内容"
+                  :autosize="{ minRows: 2, maxRows: 5 }"
+                />
+                <t-button
+                  theme="primary"
+                  shape="square"
+                  :loading="searching"
+                  :disabled="!canSearch"
+                  class="search-btn"
+                  @click="handleSearch"
+                >
+                  <template #icon><t-icon name="search" /></template>
+                </t-button>
+              </div>
             </t-form-item>
             <t-form-item label="Top K">
               <t-slider
@@ -31,77 +43,35 @@
               />
               <span class="slider-value">{{ formData.top_k }}</span>
             </t-form-item>
-            <t-form-item label="图谱增强">
-              <t-switch v-model="formData.enable_graph" />
-            </t-form-item>
-            <t-form-item label="Wiki 加权">
-              <t-switch v-model="formData.enable_wiki_boost" />
-            </t-form-item>
-            <t-form-item label="精排">
-              <t-switch v-model="formData.enable_rerank" />
-            </t-form-item>
-            <t-form-item label="父块扩展">
-              <t-switch v-model="formData.expand_parent" />
-            </t-form-item>
-
-            <t-collapse :borderless="true" style="margin-bottom: 16px">
-              <t-collapse-panel value="adv" header="高级参数">
-                <t-form-item label="自定义参数" help="关闭时使用后端默认值">
-                  <t-switch v-model="useCustomParams" />
-                </t-form-item>
-                <template v-if="useCustomParams">
-                  <t-form-item label="召回数/通道">
-                    <t-slider v-model="advParams.recall_top_k" :min="10" :max="200" :step="10" />
-                    <span class="slider-value">{{ advParams.recall_top_k }}</span>
-                  </t-form-item>
-                  <t-form-item label="向量阈值">
-                    <t-slider v-model="advParams.vector_threshold" :min="0" :max="1" :step="0.01" />
-                    <span class="slider-value">{{ advParams.vector_threshold.toFixed(2) }}</span>
-                  </t-form-item>
-                  <t-form-item label="关键词阈值">
-                    <t-slider v-model="advParams.keyword_threshold" :min="0" :max="1" :step="0.01" />
-                    <span class="slider-value">{{ advParams.keyword_threshold.toFixed(2) }}</span>
-                  </t-form-item>
-                  <t-form-item label="RRF k">
-                    <t-input-number v-model="advParams.rrf_k" :min="1" :max="1000" theme="column" />
-                  </t-form-item>
-                  <t-form-item label="向量权重">
-                    <t-slider v-model="advParams.vector_weight" :min="0" :max="1" :step="0.05" />
-                    <span class="slider-value">{{ advParams.vector_weight.toFixed(2) }}</span>
-                  </t-form-item>
-                  <t-form-item label="关键词权重">
-                    <t-slider v-model="advParams.keyword_weight" :min="0" :max="1" :step="0.05" />
-                    <span class="slider-value">{{ advParams.keyword_weight.toFixed(2) }}</span>
-                  </t-form-item>
-                  <t-form-item label="精排阈值">
-                    <t-slider v-model="advParams.rerank_threshold" :min="0" :max="1" :step="0.01" />
-                    <span class="slider-value">{{ advParams.rerank_threshold.toFixed(2) }}</span>
-                  </t-form-item>
-                  <t-form-item label="Wiki 加权系数">
-                    <t-slider v-model="advParams.wiki_boost" :min="1" :max="3" :step="0.1" />
-                    <span class="slider-value">{{ advParams.wiki_boost.toFixed(1) }}</span>
-                  </t-form-item>
-                </template>
-              </t-collapse-panel>
-            </t-collapse>
-            <t-form-item>
-              <t-button
-                theme="primary"
-                block
-                :loading="searching"
-                :disabled="!canSearch"
-                @click="handleSearch"
-              >
-                <template #icon><t-icon name="search" /></template>
-                开始检索
-              </t-button>
-            </t-form-item>
+            <div class="switch-grid">
+              <t-form-item label="图谱增强">
+                <t-switch v-model="formData.enable_graph" size="small" />
+              </t-form-item>
+              <t-form-item label="Wiki 加权">
+                <div class="wiki-inline">
+                  <t-switch v-model="formData.enable_wiki_boost" size="small" />
+                  <t-input-number
+                    v-model="advParams.wiki_boost"
+                    :min="1" :max="3" :step="0.1" :decimal-places="1"
+                    :disabled="!formData.enable_wiki_boost"
+                    size="small" theme="column"
+                    class="wiki-num"
+                  />
+                </div>
+              </t-form-item>
+              <t-form-item label="Reranker">
+                <t-switch v-model="formData.enable_rerank" size="small" />
+              </t-form-item>
+              <t-form-item label="父块扩展">
+                <t-switch v-model="formData.expand_parent" size="small" />
+              </t-form-item>
+            </div>
           </t-form>
         </t-card>
       </t-col>
 
       <!-- 右侧：检索结果 -->
-      <t-col :span="8">
+      <t-col v-if="searching || hits.length > 0 || faqHits.length > 0" :span="8">
         <t-card title="检索结果" :bordered="false">
           <template #action>
             <t-tag v-if="hits.length > 0" theme="primary" variant="light">
@@ -170,11 +140,47 @@
         </t-card>
       </t-col>
     </t-row>
+
+    <div class="adv-toggle" @click="showAdvParams = !showAdvParams">
+      <t-icon :name="showAdvParams ? 'chevron-down' : 'chevron-right'" size="14px" />
+      <span>高级参数（调试用）</span>
+      <t-button v-if="showAdvParams" variant="text" size="small" theme="default" @click.stop="resetAdvParams">
+        <template #icon><t-icon name="refresh" /></template>
+        恢复默认
+      </t-button>
+    </div>
+    <div v-show="showAdvParams" class="adv-card">
+      <div class="formula-bar">
+        <div class="formula-line">
+          <span>score =</span>
+          <t-input-number v-model="advParams.vector_weight" :min="0" :max="1" :step="0.05" :decimal-places="2" size="small" theme="column" class="f-input" />
+          <span>× Embedding +</span>
+          <t-input-number v-model="advParams.keyword_weight" :min="0" :max="1" :step="0.05" :decimal-places="2" size="small" theme="column" class="f-input" />
+          <span>× BM25，RRF = 1/(</span>
+          <t-input-number v-model="advParams.rrf_k" :min="1" :max="1000" size="small" theme="column" class="f-input" />
+          <span>+ rank)</span>
+        </div>
+      </div>
+      <div class="params-row">
+        <t-form-item label="召回数" help="每通道检索量">
+          <t-input-number v-model="advParams.recall_top_k" :min="10" :max="200" :step="10" size="small" theme="column" />
+        </t-form-item>
+        <t-form-item label="向量阈值" help="过滤低分向量">
+          <t-input-number v-model="advParams.vector_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+        </t-form-item>
+        <t-form-item label="关键词阈值" help="过滤低分关键词">
+          <t-input-number v-model="advParams.keyword_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+        </t-form-item>
+        <t-form-item label="Reranker 阈值" help="丢弃低分结果">
+          <t-input-number v-model="advParams.rerank_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+        </t-form-item>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listKnowledgeBases } from '@/api/knowledgeBase'
 import { retrieve, type RetrievalHit } from '@/api/retrieval'
@@ -182,6 +188,7 @@ import PageHeader from '@/components/PageHeader.vue'
 
 const kbLoading = ref(false)
 const searching = ref(false)
+const showAdvParams = ref(true)
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const hits = ref<RetrievalHit[]>([])
 const faqHits = ref<RetrievalHit[]>([])
@@ -196,8 +203,6 @@ const formData = reactive({
   expand_parent: true,
 })
 
-const useCustomParams = ref(false)
-
 const advParams = reactive({
   recall_top_k: 50,
   vector_threshold: 0.15,
@@ -206,11 +211,21 @@ const advParams = reactive({
   vector_weight: 0.7,
   keyword_weight: 0.3,
   rerank_threshold: 0.2,
-  wiki_boost: 1.3,
+  wiki_boost: 1,
 })
+
+const DEFAULT_ADV = { ...advParams }
+
+const resetAdvParams = () => {
+  Object.assign(advParams, DEFAULT_ADV)
+}
 
 const canSearch = computed(() => {
   return formData.kb_ids.length > 0 && formData.query.trim().length > 0
+})
+
+watch(() => formData.enable_wiki_boost, (on) => {
+  advParams.wiki_boost = on ? 1.3 : 1
 })
 
 const getChannelTheme = (channel: string) => {
@@ -257,7 +272,7 @@ const handleSearch = async () => {
       enable_wiki_boost: formData.enable_wiki_boost,
       enable_rerank: formData.enable_rerank,
       expand_parent: formData.expand_parent,
-      ...(useCustomParams.value ? { ...advParams } : {}),
+      ...advParams,
     })
     hits.value = res.hits
     faqHits.value = res.faq_hits || []
@@ -280,10 +295,139 @@ onMounted(fetchKbOptions)
   margin: 0 auto;
 }
 
+.retrieval-test :deep(.page-header) {
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+.retrieval-test :deep(.t-card__title) {
+  font-size: 15px;
+}
+
+.retrieval-test :deep(.t-card__header) {
+  padding: 10px 16px 0;
+}
+
+.retrieval-test :deep(.t-card__body) {
+  padding: 8px 16px 12px;
+}
+
+.compact-form :deep(.t-form__item) {
+  margin-bottom: 8px;
+}
+
+.query-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.query-row :deep(.t-textarea) {
+  flex: 1;
+}
+
+.search-btn {
+  flex-shrink: 0;
+  align-self: flex-end;
+  height: 32px;
+}
+
+.switch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+.switch-grid :deep(.t-form__item) {
+  margin-bottom: 4px;
+}
+
+.wiki-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wiki-num {
+  width: 72px;
+}
+
+.adv-collapse {
+  margin-bottom: 12px;
+}
+
+.adv-collapse :deep(.t-collapse-panel__content) {
+  padding: 8px 0 0;
+}
+
+.adv-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--td-text-color-secondary);
+  cursor: pointer;
+  border-radius: var(--td-radius-medium);
+  transition: background 0.15s;
+}
+
+.adv-toggle:hover {
+  background: var(--td-gray-color-2);
+}
+
+.adv-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+  margin-top: 4px;
+  padding: 10px 16px;
+  background: var(--td-bg-color-container);
+  border: 1px solid var(--td-component-stroke);
+  border-radius: var(--td-radius-large);
+}
+
+.params-row {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.params-row :deep(.t-form__item) {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.formula-bar {
+  width: 100%;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px dashed var(--td-border-level-1-color);
+}
+
+.formula-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--td-text-color-primary);
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.f-input {
+  width: 72px;
+}
+
 .slider-value {
   margin-left: 12px;
   min-width: 30px;
   text-align: center;
+  font-size: 12px;
 }
 
 .empty-state {

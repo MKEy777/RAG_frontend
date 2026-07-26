@@ -18,6 +18,9 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['tdesign-vue-next', 'tdesign-icons-vue-next', 'vue', 'vue-router', 'pinia'],
+  },
   build: {
     rollupOptions: {
       output: {
