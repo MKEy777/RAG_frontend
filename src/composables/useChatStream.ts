@@ -12,6 +12,16 @@ export function useChatStream() {
 
   const send = async (session: ChatSession, query: string) => {
     const gen = ++generation
+
+    if (!session.serverSessionId) {
+      try {
+        const { createSession } = await import('@/api/sessions')
+        session.serverSessionId = (await createSession(session.kbIds)).id
+      } catch {
+        // 后端会话不可用时退回无状态模式
+      }
+    }
+
     const history = session.messages
       .filter((m) => m.complete && !m.error)
       .slice(-HISTORY_LIMIT)
@@ -33,6 +43,7 @@ export function useChatStream() {
           query,
           history,
           enable_wiki_boost: session.enableWikiBoost,
+          session_id: session.serverSessionId ?? null,
         },
         {
           onToken: (token) => {

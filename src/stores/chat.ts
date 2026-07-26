@@ -26,6 +26,7 @@ export interface ChatSession {
   createdAt: number
   updatedAt: number
   messages: ChatMessage[]
+  serverSessionId?: string
 }
 
 const STORAGE_KEY = 'knowlink_chat_sessions'
