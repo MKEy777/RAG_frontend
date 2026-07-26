@@ -19,35 +19,60 @@
     </PageHeader>
 
     <div class="split">
-      <div v-if="kbMode" class="pane files-pane">
-        <div class="pane-header">
-          文件
-          <t-tag variant="light" size="small">{{ docs.length }}</t-tag>
+      <div
+        v-if="kbMode"
+        class="pane files-pane"
+        :class="{ collapsed: filesCollapsed }"
+        @mouseenter="filesCollapsed && (flyoutVisible = true)"
+        @mouseleave="filesCollapsed && (flyoutVisible = false)"
+      >
+        <div class="pane-header files-header" @click="filesCollapsed = !filesCollapsed">
+          <t-icon :name="filesCollapsed ? 'chevron-right' : 'chevron-down'" size="14px" class="collapse-icon" />
+          <template v-if="!filesCollapsed">
+            文件
+            <t-tag variant="light" size="small">{{ docs.length }}</t-tag>
+          </template>
         </div>
-        <div class="pane-body files-body">
-          <t-loading :loading="docsLoading" style="min-height: 120px">
-            <t-empty v-if="!docsLoading && docs.length === 0" description="暂无文档" />
-            <div v-else class="file-list">
-              <div
-                v-for="d in docs"
-                :key="d.id"
-                class="file-item"
-                :class="{ active: d.id === activeDocId, disabled: d.parse_status !== 'completed' }"
-                @click="selectDoc(d)"
-              >
-                <t-icon name="file" size="14px" class="file-icon" />
-                <span class="file-name">{{ d.file_name || d.title }}</span>
-                <t-tag
-                  v-if="d.parse_status !== 'completed'"
-                  :theme="statusTheme(d.parse_status)"
-                  variant="light"
-                  size="small"
+        <div class="files-body-wrapper">
+          <div class="pane-body files-body">
+            <t-loading :loading="docsLoading" style="min-height: 120px">
+              <t-empty v-if="!docsLoading && docs.length === 0" description="暂无文档" />
+              <div v-else class="file-list">
+                <div
+                  v-for="d in docs"
+                  :key="d.id"
+                  class="file-item"
+                  :class="{ active: d.id === activeDocId, disabled: d.parse_status !== 'completed' }"
+                  @click="selectDoc(d)"
+                  @mouseenter="hoveredDocId = d.id"
                 >
-                  {{ statusText(d.parse_status) }}
-                </t-tag>
+                  <t-icon name="file" size="14px" class="file-icon" />
+                  <template v-if="!filesCollapsed">
+                    <span class="file-name">{{ d.file_name || d.title }}</span>
+                    <t-tag
+                      v-if="d.parse_status !== 'completed'"
+                      :theme="statusTheme(d.parse_status)"
+                      variant="light"
+                      size="small"
+                    >
+                      {{ statusText(d.parse_status) }}
+                    </t-tag>
+                  </template>
+                </div>
               </div>
-            </div>
-          </t-loading>
+            </t-loading>
+          </div>
+        </div>
+        <div v-if="filesCollapsed && flyoutVisible" class="flyout">
+          <div
+            v-for="d in docs"
+            :key="d.id"
+            class="flyout-item"
+            :class="{ highlighted: d.id === hoveredDocId, active: d.id === activeDocId }"
+            @click="selectDoc(d)"
+          >
+            {{ d.file_name || d.title }}
+          </div>
         </div>
       </div>
 
@@ -96,7 +121,11 @@
                     {{ getTypeText(c.chunk_type) }}
                   </t-tag>
                   <span class="chunk-pos">{{ c.start_at ?? '-' }} – {{ c.end_at ?? '-' }}</span>
-                  <span v-if="c.parent_chunk_id" class="chunk-parent">父: {{ c.parent_chunk_id.slice(0, 8) }}</span>
+                  <span
+                    v-if="c.parent_chunk_id"
+                    class="chunk-parent"
+                    @click.stop="jumpToParent(c.parent_chunk_id)"
+                  >↑ 父块</span>
                   <t-button
                     variant="text"
                     size="small"
@@ -106,6 +135,10 @@
                   >
                     <t-icon name="file-copy" />
                   </t-button>
+                  <t-button variant="text" size="small" class="copy-btn" @click.stop="openEdit(c)">编辑</t-button>
+                  <t-popconfirm content="删除该切块？将同步从索引移除" theme="danger" @confirm="handleDelete(c)">
+                    <t-button variant="text" size="small" theme="danger" class="copy-btn" @click.stop>删除</t-button>
+                  </t-popconfirm>
                 </div>
                 <div class="chunk-content">{{ c.content }}</div>
               </div>
@@ -124,6 +157,10 @@
         </div>
       </div>
     </div>
+
+    <t-dialog v-model:visible="editVisible" header="编辑切块" width="680px" :confirm-btn="{ loading: saving }" @confirm="handleSave">
+      <t-textarea v-model="editContent" :autosize="{ minRows: 8, maxRows: 20 }" />
+    </t-dialog>
   </div>
 </template>
 
@@ -132,7 +169,7 @@ import { ref, reactive, computed, nextTick, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { getDocument, listDocuments, type Document } from '@/api/documents'
-import { listChunks, getDocumentContent, type Chunk } from '@/api/chunks'
+import { listChunks, getDocumentContent, updateChunk, deleteChunk, type Chunk } from '@/api/chunks'
 import { statusTheme, statusText } from '@/utils/format'
 import PageHeader from '@/components/PageHeader.vue'
 
@@ -141,6 +178,9 @@ const kbId = route.params.id as string
 const routeDocId = (route.params.docId as string) || ''
 const kbMode = !routeDocId
 
+const filesCollapsed = ref(false)
+const flyoutVisible = ref(false)
+const hoveredDocId = ref('')
 const activeDocId = ref(routeDocId)
 const docs = ref<Document[]>([])
 const docsLoading = ref(false)
@@ -150,7 +190,7 @@ const loading = ref(false)
 const sourceLoading = ref(false)
 const sourceContent = ref('')
 const selected = ref<Chunk | null>(null)
-const chunkTypeFilter = ref<string | undefined>(undefined)
+const chunkTypeFilter = ref<string | undefined>('text')
 const hlMark = ref<HTMLElement | null>(null)
 
 const typeOptions = [
@@ -243,6 +283,15 @@ const selectChunk = async (c: Chunk) => {
   hlMark.value?.scrollIntoView({ block: 'center', behavior: 'smooth' })
 }
 
+const jumpToParent = (parentId: string) => {
+  const parent = chunks.value.find((c) => c.id === parentId)
+  if (parent) {
+    selectChunk(parent)
+  } else {
+    MessagePlugin.warning('父块不在当前页，请切换分页或筛选“父块”类型查看')
+  }
+}
+
 const handlePageChange = (pageInfo: { current: number; pageSize: number }) => {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
@@ -270,6 +319,36 @@ const copyChunk = async (c: Chunk) => {
   } catch {
     MessagePlugin.error('复制失败')
   }
+}
+
+const editVisible = ref(false)
+const editContent = ref('')
+const saving = ref(false)
+let editingChunk: Chunk | null = null
+
+function openEdit(chunk: Chunk) {
+  editingChunk = chunk
+  editContent.value = chunk.content
+  editVisible.value = true
+}
+
+async function handleSave() {
+  if (!editingChunk) return
+  saving.value = true
+  try {
+    await updateChunk(activeDocId.value, editingChunk.id, editContent.value)
+    editingChunk.content = editContent.value
+    editVisible.value = false
+    MessagePlugin.success('切块已更新')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleDelete(chunk: Chunk) {
+  await deleteChunk(activeDocId.value, chunk.id)
+  MessagePlugin.success('切块已删除')
+  await fetchChunks()
 }
 
 onMounted(async () => {
@@ -323,6 +402,85 @@ onMounted(async () => {
 .files-pane {
   flex: none;
   width: 240px;
+  transition: width 0.2s ease;
+  position: relative;
+}
+
+.files-pane.collapsed {
+  width: 36px;
+}
+
+.files-pane.collapsed .files-header {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.files-pane.collapsed .file-item {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.files-body-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0 0 var(--td-radius-large) var(--td-radius-large);
+}
+
+.flyout {
+  position: absolute;
+  top: 44px;
+  left: 100%;
+  margin-left: 6px;
+  min-width: 180px;
+  max-width: 260px;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: var(--td-radius-large);
+  background: var(--td-bg-color-container);
+  border: 1px solid var(--td-component-stroke);
+  box-shadow: var(--td-shadow-2);
+  z-index: 10;
+}
+
+.flyout-item {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: var(--td-radius-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--td-text-color-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.flyout-item.highlighted {
+  background: var(--td-gray-color-3);
+  color: var(--td-text-color-primary);
+  font-weight: 600;
+}
+
+.flyout-item.active {
+  color: var(--td-brand-color);
+}
+
+.files-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.files-header:hover {
+  background: none;
+}
+
+.collapse-icon {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
 }
 
 .files-body {
@@ -346,11 +504,10 @@ onMounted(async () => {
 }
 
 .file-item:hover {
-  background: var(--td-bg-color-container-hover);
+  background: var(--td-gray-color-2);
 }
 
 .file-item.active {
-  background: var(--td-gray-color-3);
   font-weight: 600;
 }
 
@@ -444,6 +601,16 @@ onMounted(async () => {
   margin-bottom: 6px;
   font-size: 12px;
   color: var(--td-text-color-placeholder);
+}
+
+.chunk-parent {
+  color: var(--td-brand-color);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.chunk-parent:hover {
+  text-decoration: underline;
 }
 
 .copy-btn {

@@ -27,3 +27,11 @@ export async function getDocumentContent(docId: string): Promise<{ doc_id: strin
   const { data } = await client.get(`/documents/${docId}/content`)
   return data
 }
+
+export async function updateChunk(docId: string, chunkId: string, content: string): Promise<void> {
+  await client.put(`/documents/${docId}/chunks/${chunkId}`, { content })
+}
+
+export async function deleteChunk(docId: string, chunkId: string): Promise<void> {
+  await client.delete(`/documents/${docId}/chunks/${chunkId}`)
+}
