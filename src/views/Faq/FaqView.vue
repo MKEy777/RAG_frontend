@@ -190,7 +190,7 @@ onMounted(async () => {
 
 <style scoped>
 .faq-view {
-  max-width: 1200px;
+  max-width: var(--kl-content-max-width);
   margin: 0 auto;
 }
 
@@ -200,7 +200,7 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
 }
 </style>

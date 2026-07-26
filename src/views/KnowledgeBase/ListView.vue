@@ -165,32 +165,34 @@ onMounted(fetchData)
 
 <style scoped>
 .kb-list {
-  max-width: 1200px;
+  max-width: var(--kl-content-max-width);
   margin: 0 auto;
 }
 
 .kb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
+  gap: var(--kl-space-4);
 }
 
 .kb-card {
-  background: var(--td-bg-color-container);
-  border-radius: var(--td-radius-extraLarge);
-  padding: 20px;
+  background: #F8F9FA;
+  border-radius: var(--kl-radius-card);
+  padding: var(--kl-card-padding);
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--kl-space-3);
   min-height: 140px;
-  border: 1px solid var(--td-component-stroke);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  border: none;
+  box-shadow: var(--kl-elevation-1);
+  transition: box-shadow var(--kl-duration-fast) var(--kl-ease-default),
+    background var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .kb-card:hover {
-  border-color: var(--td-component-border);
-  background: var(--td-gray-color-1);
+  box-shadow: var(--kl-elevation-2);
+  background: #fff;
 }
 
 .skeleton-card {
@@ -204,30 +206,32 @@ onMounted(fetchData)
 .create-card {
   align-items: center;
   justify-content: center;
-  border: 2px dashed var(--td-component-border);
+  border: 2px dashed #E8EAED;
   background: transparent;
+  box-shadow: none;
   color: var(--td-text-color-secondary);
-  gap: 8px;
+  gap: var(--kl-space-2);
 }
 
 .create-card:hover {
-  border-color: var(--td-gray-color-6);
-  color: var(--td-text-color-primary);
-  background: var(--td-gray-color-1);
+  border-color: var(--kl-accent);
+  color: var(--kl-accent);
+  background: var(--kl-accent-light);
+  box-shadow: none;
 }
 
 .kb-card-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--kl-space-2);
 }
 
 .kb-card-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--td-radius-large);
-  background: var(--td-brand-color-1);
-  color: var(--td-brand-color-7);
+  width: var(--kl-control-height-md);
+  height: var(--kl-control-height-md);
+  border-radius: var(--kl-radius-lg);
+  background: var(--kl-accent-light);
+  color: var(--kl-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -238,7 +242,7 @@ onMounted(fetchData)
   flex: 1;
   min-width: 0;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: var(--kl-weight-semibold);
   color: var(--td-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -247,7 +251,7 @@ onMounted(fetchData)
 
 .kb-card-delete {
   color: var(--td-text-color-placeholder);
-  transition: color 0.15s ease;
+  transition: color var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .kb-card-delete:hover {
@@ -256,9 +260,9 @@ onMounted(fetchData)
 
 .kb-card-desc {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
-  line-height: 1.5;
+  line-height: var(--kl-leading-normal);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -268,11 +272,11 @@ onMounted(fetchData)
 
 .kb-card-foot {
   display: flex;
-  gap: 6px;
+  gap: var(--kl-space-1);
 }
 
 .kb-pagination {
-  margin-top: 20px;
+  margin-top: var(--kl-space-5);
   display: flex;
   justify-content: flex-end;
 }

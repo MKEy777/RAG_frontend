@@ -92,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useChatStore } from '@/stores/chat'
 import { useChatStream } from '@/composables/useChatStream'
 import { listKnowledgeBases } from '@/api/knowledgeBase'
@@ -170,6 +170,16 @@ const toggleKb = (id: string) => {
   if (idx >= 0) selectedKbIds.value.splice(idx, 1)
   else selectedKbIds.value.push(id)
 }
+
+const handleOutsideClick = (e: MouseEvent) => {
+  const el = e.target as HTMLElement
+  if (!el.closest('.kb-popup') && !el.closest('.action-chip')) {
+    kbPopupOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleOutsideClick))
+onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
 </script>
 
 <style scoped>
@@ -186,55 +196,56 @@ const toggleKb = (id: string) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 24px 12vh;
-  gap: 10px;
+  padding: var(--kl-space-6) var(--kl-space-6) 8vh;
+  gap: var(--kl-space-1);
 }
 
 .hero-title {
-  font-size: 28px;
-  font-weight: 600;
+  font-size: 36px;
+  font-weight: var(--kl-weight-regular);
   color: var(--td-text-color-primary);
   margin: 0;
+  letter-spacing: var(--kl-tracking-tight);
 }
 
 .hero-hint {
-  font-size: 14px;
+  font-size: var(--kl-text-base);
   color: var(--td-text-color-secondary);
-  margin: 0 0 16px;
+  margin: 0 0 var(--kl-space-5);
 }
 
 .hero-input-area,
 .footer-input-area {
   width: 100%;
-  max-width: 760px;
+  max-width: 680px;
   position: relative;
 }
 
 .kb-popup {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + var(--kl-space-2));
   left: 0;
   right: 0;
   max-height: 240px;
   overflow-y: auto;
-  padding: 6px;
+  padding: var(--kl-space-1);
   background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-large);
-  box-shadow: var(--td-shadow-2);
-  z-index: 50;
+  border: none;
+  border-radius: var(--kl-radius-xl);
+  box-shadow: var(--kl-elevation-flyout);
+  z-index: var(--kl-z-flyout);
 }
 
 .kb-popup-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--td-radius-medium);
-  font-size: 14px;
+  gap: var(--kl-space-2);
+  padding: var(--kl-space-2) var(--kl-space-3);
+  border-radius: var(--kl-radius-md);
+  font-size: var(--kl-text-base);
   color: var(--td-text-color-primary);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background var(--kl-duration-instant) var(--kl-ease-default);
 }
 
 .kb-popup-item:hover {
@@ -242,14 +253,14 @@ const toggleKb = (id: string) => {
 }
 
 .kb-popup-item.selected {
-  color: var(--td-brand-color);
-  font-weight: 600;
+  color: var(--kl-accent);
+  font-weight: var(--kl-weight-semibold);
 }
 
 .kb-popup-empty {
-  padding: 16px;
+  padding: var(--kl-space-4);
   text-align: center;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-placeholder);
 }
 
@@ -257,14 +268,15 @@ const toggleKb = (id: string) => {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 2px 4px;
+  padding: 2px var(--kl-space-1);
   border: none;
-  border-radius: 14px;
+  border-radius: var(--kl-radius-full);
   background: transparent;
-  font-size: 12px;
+  font-size: var(--kl-text-base);
   color: var(--td-text-color-placeholder);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default),
+    color var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .action-chip:hover {
@@ -273,28 +285,28 @@ const toggleKb = (id: string) => {
 }
 
 .action-chip.active {
-  background: var(--td-brand-color);
-  color: #fff;
+  background: var(--kl-accent-light);
+  color: var(--kl-accent);
 }
 
 .chat-messages {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 24px;
+  padding: var(--kl-space-6);
 }
 
 .chat-messages-inner {
-  max-width: 760px;
+  max-width: 680px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--kl-space-6);
 }
 
 .chat-footer {
   flex-shrink: 0;
-  padding: 8px 24px 10px;
+  padding: var(--kl-space-2) var(--kl-space-6) var(--kl-space-2);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -302,8 +314,8 @@ const toggleKb = (id: string) => {
 
 .chat-disclaimer {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--kl-text-xs);
   color: var(--td-text-color-placeholder);
-  margin: 8px 0 0;
+  margin: var(--kl-space-2) 0 0;
 }
 </style>

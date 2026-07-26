@@ -79,8 +79,8 @@ const chartContainer = ref<HTMLDivElement | null>(null)
 let chart: echarts.ECharts | null = null
 
 const palette = [
-  '#0d0d0d',
-  '#6e7781',
+  '#4285F4',
+  '#9B72F5',
   '#8250df',
   '#1a7f37',
   '#9a6700',
@@ -260,7 +260,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px 16px;
+  padding: var(--kl-page-padding-y) var(--kl-page-padding-x) var(--kl-space-4);
 }
 
 .chart-container {

@@ -1,0 +1,122 @@
+/* KnowLink Design Tokens
+   语义层：所有组件应引用这些 token，而非硬编码数值 */
+
+:root {
+  /* ─── Spacing（4px 基准） ─── */
+  --kl-space-0: 0;
+  --kl-space-1: 4px;
+  --kl-space-2: 8px;
+  --kl-space-3: 12px;
+  --kl-space-4: 16px;
+  --kl-space-5: 20px;
+  --kl-space-6: 24px;
+  --kl-space-8: 32px;
+  --kl-space-10: 40px;
+  --kl-space-12: 48px;
+  --kl-space-16: 64px;
+
+  /* 语义间距 */
+  --kl-gap-inline: var(--kl-space-2);
+  --kl-gap-stack: var(--kl-space-3);
+  --kl-gap-section: var(--kl-space-8);
+  --kl-page-padding-x: var(--kl-space-8);
+  --kl-page-padding-y: var(--kl-space-6);
+  --kl-card-padding: var(--kl-space-5);
+
+  /* ─── Typography Scale ─── */
+  --kl-text-xs: 11px;
+  --kl-text-sm: 13px;
+  --kl-text-base: 14px;
+  --kl-text-md: 16px;
+  --kl-text-lg: 18px;
+  --kl-text-xl: 22px;
+  --kl-text-2xl: 28px;
+  --kl-text-3xl: 36px;
+
+  --kl-leading-tight: 1.25;
+  --kl-leading-normal: 1.5;
+  --kl-leading-relaxed: 1.7;
+
+  --kl-weight-regular: 400;
+  --kl-weight-medium: 500;
+  --kl-weight-semibold: 600;
+  --kl-weight-bold: 700;
+
+  --kl-tracking-tight: -0.02em;
+  --kl-tracking-normal: 0;
+  --kl-tracking-wide: 0.04em;
+
+  /* ─── Motion ─── */
+  --kl-duration-instant: 80ms;
+  --kl-duration-fast: 150ms;
+  --kl-duration-normal: 200ms;
+  --kl-duration-slow: 320ms;
+  --kl-duration-enter: 250ms;
+
+  --kl-ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --kl-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --kl-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ─── Layout ─── */
+  --kl-sidebar-width: 260px;
+  --kl-sidebar-collapsed: 56px;
+  --kl-content-max-width: 1200px;
+  --kl-chat-max-width: 768px;
+  --kl-header-height: 56px;
+
+  /* ─── Accent（Gemini） ─── */
+  --kl-accent: #4285F4;
+  --kl-accent-hover: #3367D6;
+  --kl-accent-active: #274DB0;
+  --kl-accent-violet: #9B72F5;
+  --kl-gradient: linear-gradient(135deg, #4285F4, #9B72F5, #D96570);
+  --kl-gradient-subtle: linear-gradient(135deg, rgba(66,133,244,0.08), rgba(155,114,245,0.08));
+  --kl-accent-light: #F0F4FF;
+  --kl-accent-focus: rgba(66, 133, 244, 0.14);
+
+  /* ─── Elevation ─── */
+  --kl-elevation-0: none;
+  --kl-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --kl-elevation-2: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --kl-elevation-3: 0 12px 32px rgba(0, 0, 0, 0.1);
+  --kl-elevation-flyout: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+  /* ─── Border ─── */
+  --kl-border-color: var(--td-component-stroke, #e3e3e3);
+  --kl-border-color-strong: var(--td-component-border, #d9d9d9);
+  --kl-border-width: 1px;
+  --kl-radius-sm: 4px;
+  --kl-radius-md: 8px;
+  --kl-radius-lg: 16px;
+  --kl-radius-xl: 20px;
+  --kl-radius-pill: 24px;
+  --kl-radius-card: 16px;
+  --kl-radius-full: 999px;
+
+  /* ─── Z-index 层级 ─── */
+  --kl-z-base: 0;
+  --kl-z-sticky: 10;
+  --kl-z-flyout: 100;
+  --kl-z-overlay: 200;
+  --kl-z-modal: 300;
+  --kl-z-toast: 400;
+
+  /* ─── 组件尺寸 ─── */
+  --kl-control-height-sm: 28px;
+  --kl-control-height-md: 36px;
+  --kl-control-height-lg: 44px;
+  --kl-icon-sm: 14px;
+  --kl-icon-md: 18px;
+  --kl-icon-lg: 24px;
+}
+
+/* ─── Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --kl-duration-instant: 0ms;
+    --kl-duration-fast: 0ms;
+    --kl-duration-normal: 0ms;
+    --kl-duration-slow: 0ms;
+    --kl-duration-enter: 0ms;
+  }
+}

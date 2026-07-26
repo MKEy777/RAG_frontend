@@ -1,4 +1,5 @@
-/* KnowLink 主题：ChatGPT 风黑白极简（近黑主色 + 中性灰） */
+/* KnowLink 主题：Gemini 风（蓝紫渐变 + 去边框 + 大留白）
+   色彩层 → 覆写 TDesign 变量；语义 token 见 tokens.css */
 :root:root,
 :root:root[theme-mode="light"] {
   --app-font-family: "Inter Variable", -apple-system, BlinkMacSystemFont,
@@ -7,22 +8,22 @@
   --app-font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  /* 品牌近黑色阶 */
-  --td-brand-color-1: #f4f4f4;
-  --td-brand-color-2: #ececec;
-  --td-brand-color-3: #d9d9d9;
-  --td-brand-color-4: #afafaf;
-  --td-brand-color-5: #8f8f8f;
-  --td-brand-color-6: #5d5d5d;
-  --td-brand-color-7: #383838;
-  --td-brand-color-8: #2a2a2a;
-  --td-brand-color-9: #0d0d0d;
-  --td-brand-color-10: #000;
-  --td-brand-color: var(--td-brand-color-9);
-  --td-brand-color-hover: var(--td-brand-color-7);
-  --td-brand-color-active: var(--td-brand-color-10);
-  --td-brand-color-focus: rgba(13, 13, 13, 0.12);
-  --td-brand-color-disabled: #d9d9d9;
+  /* 品牌蓝色阶（Gemini Blue） */
+  --td-brand-color-1: #F0F4FF;
+  --td-brand-color-2: #E4ECFF;
+  --td-brand-color-3: #C6D6FF;
+  --td-brand-color-4: #A8C0FF;
+  --td-brand-color-5: #8AAAFF;
+  --td-brand-color-6: #6B95F8;
+  --td-brand-color-7: #4285F4;
+  --td-brand-color-8: #3367D6;
+  --td-brand-color-9: #274DB0;
+  --td-brand-color-10: #1C3A8C;
+  --td-brand-color: var(--td-brand-color-7);
+  --td-brand-color-hover: var(--td-brand-color-8);
+  --td-brand-color-active: var(--td-brand-color-9);
+  --td-brand-color-focus: var(--kl-accent-focus);
+  --td-brand-color-disabled: #C6D6FF;
   --td-brand-color-light: var(--td-brand-color-1);
 
   /* 状态色（低饱和，仅语义场景） */
@@ -39,55 +40,55 @@
   --td-warning-color-active: #633c01;
   --td-warning-color-light: #fff8c5;
 
-  /* 中性灰与背景（ChatGPT 系） */
-  --td-gray-color-1: #f9f9f9;
-  --td-gray-color-2: #f4f4f4;
-  --td-gray-color-3: #ececec;
-  --td-gray-color-4: #e3e3e3;
-  --td-gray-color-5: #d9d9d9;
-  --td-gray-color-6: #afafaf;
-  --td-gray-color-7: #8f8f8f;
-  --td-gray-color-8: #6e6e6e;
-  --td-gray-color-9: #5d5d5d;
+  /* 中性灰与背景（Gemini 系） */
+  --td-gray-color-1: #F8F9FA;
+  --td-gray-color-2: #F8F9FA;
+  --td-gray-color-3: #F0F4F9;
+  --td-gray-color-4: #E8EAED;
+  --td-gray-color-5: #DADCE0;
+  --td-gray-color-6: #BDC1C6;
+  --td-gray-color-7: #9AA0A6;
+  --td-gray-color-8: #80868B;
+  --td-gray-color-9: #5F6368;
   --td-gray-color-10: #424242;
   --td-gray-color-11: #383838;
   --td-gray-color-12: #2a2a2a;
-  --td-gray-color-13: #171717;
+  --td-gray-color-13: #1F1F1F;
   --td-gray-color-14: #0d0d0d;
-  --td-bg-color-page: #fff;
-  --td-bg-color-container: #fff;
-  --td-bg-color-sidebar: #f9f9f9;
+  --td-bg-color-page: #FFFFFF;
+  --td-bg-color-container: #FFFFFF;
+  --td-bg-color-sidebar: #F0F4F9;
   --td-bg-color-container-hover: var(--td-gray-color-2);
   --td-bg-color-container-active: var(--td-gray-color-3);
-  --td-bg-color-secondarycontainer: var(--td-gray-color-2);
+  --td-bg-color-secondarycontainer: var(--td-gray-color-1);
   --td-bg-color-secondarycontainer-hover: var(--td-gray-color-3);
   --td-bg-color-secondarycontainer-active: var(--td-gray-color-4);
-  --td-component-stroke: #e3e3e3;
-  --td-component-border: #d9d9d9;
+  --td-component-stroke: #E8EAED;
+  --td-component-border: #DADCE0;
 
   /* 文字 */
-  --td-text-color-primary: #0d0d0d;
-  --td-text-color-secondary: #5d5d5d;
-  --td-text-color-placeholder: #8f8f8f;
-  --td-text-color-disabled: #afafaf;
+  --td-text-color-primary: #1F1F1F;
+  --td-text-color-secondary: #5F6368;
+  --td-text-color-placeholder: #9AA0A6;
+  --td-text-color-disabled: #BDC1C6;
   --td-text-color-brand: var(--td-brand-color);
-  --td-text-color-link: var(--td-brand-color);
+  --td-text-color-link: var(--td-brand-color-7);
   --td-font-family: var(--app-font-family);
   --td-font-family-medium: var(--app-font-family);
 
-  /* 圆角 */
-  --td-radius-small: 4px;
-  --td-radius-default: 8px;
-  --td-radius-medium: 8px;
-  --td-radius-large: 12px;
-  --td-radius-extraLarge: 16px;
-  --td-radius-round: 999px;
+  /* 圆角（引用 token） */
+  --td-radius-small: var(--kl-radius-sm);
+  --td-radius-default: var(--kl-radius-md);
+  --td-radius-medium: var(--kl-radius-md);
+  --td-radius-large: var(--kl-radius-card);
+  --td-radius-extraLarge: var(--kl-radius-xl);
+  --td-radius-round: var(--kl-radius-full);
   --td-radius-circle: 50%;
 
-  /* 极轻阴影（以描边为主） */
-  --td-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --td-shadow-2: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --td-shadow-3: 0 12px 32px rgba(0, 0, 0, 0.1);
+  /* 极轻阴影（引用 token） */
+  --td-shadow-1: var(--kl-elevation-1);
+  --td-shadow-2: var(--kl-elevation-2);
+  --td-shadow-3: var(--kl-elevation-3);
 }
 
 /* 暗色主题占位（预留扩展） */
@@ -96,9 +97,12 @@
 
 body {
   font-family: var(--app-font-family);
+  font-size: var(--kl-text-base);
+  line-height: var(--kl-leading-normal);
   background: var(--td-bg-color-page);
   color: var(--td-text-color-primary);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* 滚动条细化 */
@@ -122,9 +126,33 @@ body {
   background-color: var(--td-gray-color-1);
 }
 
-/* 输入聚焦：灰黑细环 */
+/* 输入聚焦：灰色环 */
 .t-input--focused:not(.t-is-error):not(.t-is-warning):not(.t-is-success),
 .t-textarea__inner:focus:not(.t-is-disabled):not(.t-is-error) {
-  border-color: var(--td-gray-color-6);
-  box-shadow: 0 0 0 1px var(--td-brand-color-focus);
+  border-color: var(--td-gray-color-5);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── 全局过渡基准 ─── */
+.kl-transition {
+  transition-duration: var(--kl-duration-fast);
+  transition-timing-function: var(--kl-ease-default);
+}
+
+/* ─── 焦点可见性 ─── */
+:focus-visible {
+  outline: 2px solid var(--td-brand-color);
+  outline-offset: 2px;
+  border-radius: var(--kl-radius-sm);
+}
+
+/* ─── 聊天输入框：彻底去除 TDesign textarea 边框 ─── */
+.chat-input-textarea.t-textarea,
+.chat-input-textarea.t-textarea.t-is-focused,
+.chat-input-textarea .t-textarea__inner,
+.chat-input-textarea .t-textarea__inner:focus {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
 }

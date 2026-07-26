@@ -379,12 +379,12 @@ onMounted(async () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px 16px;
+  padding: var(--kl-page-padding-y) var(--kl-page-padding-x) var(--kl-space-4);
 }
 
 .split {
   display: flex;
-  gap: 16px;
+  gap: var(--kl-space-4);
   flex: 1;
   min-height: 0;
 }
@@ -395,74 +395,75 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-large);
+  border: 1px solid #E8EAED;
+  border-radius: var(--kl-radius-card);
 }
 
 .files-pane {
   flex: none;
   width: 240px;
-  transition: width 0.2s ease;
+  transition: width var(--kl-duration-normal) var(--kl-ease-default);
   position: relative;
 }
 
 .files-pane.collapsed {
-  width: 36px;
+  width: var(--kl-control-height-md);
 }
 
 .files-pane.collapsed .files-header {
   justify-content: center;
-  padding: 12px 0;
+  padding: var(--kl-space-3) 0;
 }
 
 .files-pane.collapsed .file-item {
   justify-content: center;
-  padding: 8px 0;
+  padding: var(--kl-space-2) 0;
 }
 
 .files-body-wrapper {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  border-radius: 0 0 var(--td-radius-large) var(--td-radius-large);
+  border-radius: 0 0 var(--kl-radius-lg) var(--kl-radius-lg);
 }
 
 .flyout {
   position: absolute;
   top: 44px;
   left: 100%;
-  margin-left: 6px;
+  margin-left: var(--kl-space-1);
   min-width: 180px;
   max-width: 260px;
   max-height: 100%;
   overflow-y: auto;
-  padding: 4px;
-  border-radius: var(--td-radius-large);
+  padding: var(--kl-space-1);
+  border-radius: var(--kl-radius-lg);
   background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  box-shadow: var(--td-shadow-2);
-  z-index: 10;
+  border: var(--kl-border-width) solid var(--kl-border-color);
+  box-shadow: var(--kl-elevation-flyout);
+  z-index: var(--kl-z-flyout);
 }
 
 .flyout-item {
   display: flex;
   align-items: center;
   height: 30px;
-  padding: 0 10px;
-  font-size: 13px;
-  border-radius: var(--td-radius-medium);
+  padding: 0 var(--kl-space-2);
+  font-size: var(--kl-text-sm);
+  border-radius: var(--kl-radius-md);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--td-text-color-secondary);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background var(--kl-duration-instant) var(--kl-ease-default),
+    color var(--kl-duration-instant) var(--kl-ease-default);
 }
 
 .flyout-item.highlighted {
   background: var(--td-gray-color-3);
   color: var(--td-text-color-primary);
-  font-weight: 600;
+  font-weight: var(--kl-weight-semibold);
 }
 
 .flyout-item.active {
@@ -480,11 +481,11 @@ onMounted(async () => {
 
 .collapse-icon {
   flex-shrink: 0;
-  transition: transform 0.15s ease;
+  transition: transform var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .files-body {
-  padding: 8px;
+  padding: var(--kl-space-2);
 }
 
 .file-list {
@@ -496,11 +497,11 @@ onMounted(async () => {
 .file-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--td-radius-medium);
+  gap: var(--kl-space-2);
+  padding: var(--kl-space-2) var(--kl-space-2);
+  border-radius: var(--kl-radius-md);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .file-item:hover {
@@ -508,7 +509,7 @@ onMounted(async () => {
 }
 
 .file-item.active {
-  font-weight: 600;
+  font-weight: var(--kl-weight-semibold);
 }
 
 .file-item.disabled {
@@ -524,7 +525,7 @@ onMounted(async () => {
 .file-name {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -533,56 +534,56 @@ onMounted(async () => {
 .pane-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--td-border-level-1-color);
+  gap: var(--kl-space-2);
+  padding: var(--kl-space-3) var(--kl-space-4);
+  font-size: var(--kl-text-base);
+  font-weight: var(--kl-weight-semibold);
+  border-bottom: var(--kl-border-width) solid var(--td-border-level-1-color);
 }
 
 .pane-body {
   flex: 1;
   overflow: auto;
-  padding: 12px 16px;
+  padding: var(--kl-space-3) var(--kl-space-4);
 }
 
 .files-pane .pane-body {
-  padding: 8px;
+  padding: var(--kl-space-2);
 }
 
 .pane-footer {
-  padding: 8px 16px;
-  border-top: 1px solid var(--td-border-level-1-color);
+  padding: var(--kl-space-2) var(--kl-space-4);
+  border-top: var(--kl-border-width) solid var(--td-border-level-1-color);
 }
 
 .source-pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: var(--kl-text-sm);
+  line-height: var(--kl-leading-relaxed);
   font-family: inherit;
 }
 
 .hl-mark {
   background: color-mix(in srgb, var(--td-brand-color) 18%, transparent);
   color: inherit;
-  border-radius: var(--td-radius-small);
+  border-radius: var(--kl-radius-sm);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-brand-color) 18%, transparent);
 }
 
 .chunk-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--kl-space-2);
 }
 
 .chunk-item {
-  padding: 10px 12px;
-  border: 1px solid var(--td-border-level-1-color);
-  border-radius: var(--td-radius-medium);
+  padding: var(--kl-space-2) var(--kl-space-3);
+  border: 1px solid #E8EAED;
+  border-radius: var(--kl-radius-lg);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .chunk-item:hover {
@@ -590,23 +591,23 @@ onMounted(async () => {
 }
 
 .chunk-item.active {
-  border-color: var(--td-brand-color);
-  background: var(--td-brand-color-light);
+  border-color: var(--kl-accent);
+  background: var(--kl-accent-light);
 }
 
 .chunk-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 12px;
+  gap: var(--kl-space-2);
+  margin-bottom: var(--kl-space-1);
+  font-size: var(--kl-text-xs);
   color: var(--td-text-color-placeholder);
 }
 
 .chunk-parent {
   color: var(--td-brand-color);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--kl-text-xs);
 }
 
 .chunk-parent:hover {
@@ -616,7 +617,7 @@ onMounted(async () => {
 .copy-btn {
   margin-left: auto;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .chunk-item:hover .copy-btn {
@@ -624,7 +625,7 @@ onMounted(async () => {
 }
 
 .chunk-content {
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   line-height: 1.6;
   color: var(--td-text-color-secondary);
   white-space: pre-wrap;

@@ -87,3 +87,8 @@ export async function updateWikiPage(
   const { data } = await client.put(`/wiki/${kbId}/pages/${pageId}`, body)
   return data
 }
+
+export async function clearWikiPages(kbId: string): Promise<{ status: string; deleted: number }> {
+  const { data } = await client.delete(`/wiki/${kbId}/pages`)
+  return data
+}

@@ -40,10 +40,9 @@ const handleBack = () => {
 .page-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 16px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--td-component-stroke);
+  gap: var(--kl-space-2);
+  padding-bottom: var(--kl-space-2);
+  margin-bottom: var(--kl-space-6);
 }
 
 .page-header-back {
@@ -59,9 +58,9 @@ const handleBack = () => {
 }
 
 .page-header-title {
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: var(--kl-text-xl);
+  font-weight: var(--kl-weight-medium);
+  line-height: var(--kl-leading-tight);
   color: var(--td-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -69,7 +68,7 @@ const handleBack = () => {
 }
 
 .page-header-subtitle {
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -79,7 +78,7 @@ const handleBack = () => {
 .page-header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--kl-space-2);
   flex-shrink: 0;
 }
 </style>

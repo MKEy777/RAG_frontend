@@ -17,23 +17,37 @@
       message="当前知识库未启用 Wiki 功能，请在创建时开启"
       style="margin-bottom: 16px"
     />
-    <t-row :gutter="16">
-      <t-col :span="4">
-        <t-card title="Wiki 页面" :bordered="false" class="sidebar-card">
-          <template #action>
-            <t-button
-              size="small"
-              :loading="building"
-              :disabled="building"
-              @click="handleBuild"
-            >
-              生成 Wiki
-            </t-button>
-          </template>
 
-          <t-empty v-if="pages.length === 0 && !loading" description="暂无 Wiki 页面" />
+    <!-- 无页面：全宽引导 -->
+    <div v-if="pages.length === 0 && !loading" class="wiki-guide">
+      <t-icon name="book" size="48px" class="guide-icon" />
+      <h2 class="guide-title">暂无 Wiki 页面</h2>
+      <p class="guide-desc">Wiki 基于知识库文档自动生成百科式摘要，帮助快速理解知识库核心内容</p>
+      <t-button theme="primary" size="large" :loading="building" :disabled="building || !kbId" @click="handleBuild">
+        <template #icon><t-icon name="play-circle" /></template>
+        生成 Wiki
+      </t-button>
+    </div>
 
-          <div v-else class="page-list">
+    <!-- 有页面：左右分栏 -->
+    <t-row v-else :gutter="16">
+      <t-col :span="3">
+        <div class="wiki-sidebar">
+          <div class="sidebar-head">
+            <span class="sidebar-title">页面列表</span>
+            <t-space size="4px">
+              <t-button size="small" variant="outline" @click="fetchPages">
+                刷新
+              </t-button>
+              <t-popconfirm content="重建将清除现有页面并重新生成，确定？" @confirm="handleRebuild">
+                <t-button size="small" variant="outline" theme="danger" :loading="building" :disabled="building">
+                  重建
+                </t-button>
+              </t-popconfirm>
+            </t-space>
+          </div>
+
+          <div class="page-list">
             <div v-if="folderTree.length > 0" class="page-group">
               <div class="group-label">目录</div>
               <div
@@ -77,26 +91,27 @@
               处理中 {{ statusInfo.pending_count }}
             </t-tag>
           </div>
-        </t-card>
+        </div>
       </t-col>
 
-      <t-col :span="8">
-        <t-card :bordered="false">
-          <template #title>
-            <div class="content-title">
-              <span>{{ selected?.title || '选择页面查看详情' }}</span>
-              <t-tag v-if="selected" size="small">{{ kindLabels[selected.kind] || selected.kind }}</t-tag>
+      <t-col :span="9">
+        <div class="wiki-content-panel">
+          <template v-if="!selected">
+            <div class="empty-hint">
+              <t-icon name="hint" size="20px" />
+              <span>从左侧选择一个 Wiki 页面查看内容</span>
             </div>
           </template>
-
-          <t-loading :loading="contentLoading">
-            <div v-if="!selected" class="empty-state">
-              <t-empty description="请从左侧选择一个 Wiki 页面" />
+          <template v-else>
+            <div class="content-header">
+              <h2 class="content-title">{{ selected.title }}</h2>
+              <t-tag size="small" variant="light">{{ kindLabels[selected.kind] || selected.kind }}</t-tag>
             </div>
-
-            <div v-else class="wiki-content" v-html="renderedContent" @click="handleContentClick" />
-          </t-loading>
-        </t-card>
+            <t-loading :loading="contentLoading">
+              <div class="wiki-content" v-html="renderedContent" @click="handleContentClick" />
+            </t-loading>
+          </template>
+        </div>
       </t-col>
     </t-row>
   </div>
@@ -115,6 +130,7 @@ import {
   buildWiki,
   getWikiStatus,
   getWikiIndex,
+  clearWikiPages,
   type WikiPageSummary,
   type WikiPageDetail,
   type WikiIndexFolder,
@@ -252,6 +268,21 @@ const handleBuild = async () => {
   }
 }
 
+const handleRebuild = async () => {
+  building.value = true
+  try {
+    await clearWikiPages(kbId.value)
+    pages.value = []
+    selected.value = null
+    await buildWiki(kbId.value)
+    MessagePlugin.success('Wiki 重建已启动')
+    startPolling()
+  } catch {
+    MessagePlugin.error('重建失败')
+    building.value = false
+  }
+}
+
 const fetchStatus = async () => {
   try {
     statusInfo.value = await getWikiStatus(kbId.value)
@@ -294,39 +325,83 @@ onUnmounted(() => {
 
 <style scoped>
 .wiki-view {
-  max-width: 1200px;
+  max-width: var(--kl-content-max-width);
   margin: 0 auto;
 }
 
-.sidebar-card {
-  height: 100%;
+.wiki-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--kl-space-16) var(--kl-space-6);
+  text-align: center;
+}
+
+.guide-icon {
+  color: var(--td-text-color-placeholder);
+  margin-bottom: var(--kl-space-4);
+}
+
+.guide-title {
+  font-size: var(--kl-text-lg);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
+  margin: 0 0 var(--kl-space-2);
+}
+
+.guide-desc {
+  font-size: var(--kl-text-base);
+  color: var(--td-text-color-secondary);
+  margin: 0 0 var(--kl-space-6);
+  max-width: 400px;
+}
+
+.wiki-sidebar {
+  border-right: none;
+  padding-right: var(--kl-space-3);
+}
+
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--kl-space-3);
+}
+
+.sidebar-title {
+  font-size: var(--kl-text-base);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
 }
 
 .page-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  max-height: calc(100vh - 260px);
+  overflow-y: auto;
 }
 
 .page-group {
-  margin-bottom: 8px;
+  margin-bottom: var(--kl-space-2);
 }
 
 .group-label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--kl-text-xs);
+  font-weight: var(--kl-weight-semibold);
   color: var(--td-text-color-placeholder);
-  padding: 4px 0;
+  padding: var(--kl-space-1) var(--kl-space-2);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .page-item {
-  padding: 6px 8px;
-  font-size: 13px;
+  padding: var(--kl-space-1) var(--kl-space-2);
+  font-size: var(--kl-text-sm);
   cursor: pointer;
-  border-radius: var(--td-radius-default);
-  transition: all 0.15s;
+  border-radius: var(--kl-radius-lg);
+  transition: all var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .page-item:hover {
@@ -336,13 +411,13 @@ onUnmounted(() => {
 .page-item.active {
   background: var(--td-brand-color-light);
   color: var(--td-brand-color);
-  font-weight: 500;
+  font-weight: var(--kl-weight-medium);
 }
 
 .folder-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--kl-space-1);
 }
 
 .folder-name {
@@ -354,59 +429,80 @@ onUnmounted(() => {
 }
 
 .folder-count {
-  font-size: 11px;
+  font-size: var(--kl-text-xs);
   color: var(--td-text-color-placeholder);
 }
 
 .status-bar {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--td-border-level-1-color);
+  gap: var(--kl-space-2);
+  margin-top: var(--kl-space-3);
+  padding-top: var(--kl-space-3);
+  border-top: var(--kl-border-width) solid var(--td-border-level-1-color);
+}
+
+.wiki-content-panel {
+  padding-left: var(--kl-space-2);
+}
+
+.empty-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--kl-space-2);
+  padding: var(--kl-space-10) 0;
+  font-size: var(--kl-text-base);
+  color: var(--td-text-color-placeholder);
+}
+
+.content-header {
+  display: flex;
+  align-items: center;
+  gap: var(--kl-space-2);
+  margin-bottom: var(--kl-space-5);
+  padding-bottom: var(--kl-space-3);
+  border-bottom: var(--kl-border-width) solid var(--td-border-level-1-color);
 }
 
 .content-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.empty-state {
-  padding: 60px 0;
+  font-size: var(--kl-text-lg);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
+  margin: 0;
 }
 
 .wiki-content {
   line-height: 1.8;
-  font-size: 14px;
+  font-size: var(--kl-text-base);
+  max-width: 720px;
 }
 
 .wiki-content :deep(h1),
 .wiki-content :deep(h2),
 .wiki-content :deep(h3) {
-  margin-top: 24px;
-  margin-bottom: 12px;
-  font-weight: 600;
+  margin-top: var(--kl-space-6);
+  margin-bottom: var(--kl-space-3);
+  font-weight: var(--kl-weight-semibold);
   color: var(--td-text-color-primary);
 }
 
 .wiki-content :deep(p) {
-  margin-bottom: 12px;
+  margin-bottom: var(--kl-space-3);
 }
 
 .wiki-content :deep(code) {
   background: var(--td-bg-color-secondarycontainer);
   padding: 2px 6px;
-  border-radius: var(--td-radius-small);
-  font-size: 13px;
+  border-radius: var(--kl-radius-sm);
+  font-size: var(--kl-text-sm);
 }
 
 .wiki-content :deep(pre) {
   background: var(--td-bg-color-secondarycontainer);
-  padding: 16px;
-  border-radius: var(--td-radius-medium);
+  padding: var(--kl-space-4);
+  border-radius: var(--kl-radius-md);
   overflow-x: auto;
-  margin-bottom: 16px;
+  margin-bottom: var(--kl-space-4);
 }
 
 .wiki-content :deep(pre code) {
@@ -416,13 +512,13 @@ onUnmounted(() => {
 
 .wiki-content :deep(ul),
 .wiki-content :deep(ol) {
-  padding-left: 24px;
-  margin-bottom: 12px;
+  padding-left: var(--kl-space-6);
+  margin-bottom: var(--kl-space-3);
 }
 
 .wiki-content :deep(blockquote) {
-  border-left: 3px solid var(--td-brand-color);
-  padding-left: 12px;
+  border-left: 3px solid var(--kl-accent);
+  padding-left: var(--kl-space-3);
   margin-left: 0;
   color: var(--td-text-color-secondary);
 }

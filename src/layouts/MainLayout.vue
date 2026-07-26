@@ -3,8 +3,6 @@
     <aside
       class="sidebar"
       :class="{ collapsed: sidebarCollapsed }"
-      @mouseenter="sidebarCollapsed && (navFlyout = true)"
-      @mouseleave="sidebarCollapsed && (navFlyout = false)"
     >
       <div class="sidebar-top">
         <div class="sidebar-logo" @click="sidebarCollapsed ? (sidebarCollapsed = false) : router.push('/chat')">
@@ -16,50 +14,23 @@
         </div>
       </div>
 
-      <div class="nav-wrapper">
-        <nav class="sidebar-nav">
-          <div
-            class="nav-item"
-            :class="{ active: route.path === '/chat' && !chatStore.activeId }"
-            @click="handleNewChat"
-            @mouseenter="hoveredNav = '__new'"
-          >
-            <t-icon name="edit-1" size="18px" />
-            <span v-show="!sidebarCollapsed">新对话</span>
-          </div>
-          <router-link
-            v-for="item in navItems"
-            :key="item.path"
-            :to="item.path"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @mouseenter="hoveredNav = item.path"
-          >
-            <t-icon :name="item.icon" size="18px" />
-            <span v-show="!sidebarCollapsed">{{ item.label }}</span>
-          </router-link>
-        </nav>
+      <nav class="sidebar-nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-item"
+          :class="{ active: isActive(item.path) }"
+          :data-label="item.label"
+          @click="item.path === '/chat' && (chatStore.activeId = '')"
+        >
+          <t-icon :name="item.icon" size="18px" />
+          <span v-show="!sidebarCollapsed">{{ item.label }}</span>
+        </router-link>
+      </nav>
 
-        <div v-if="sidebarCollapsed && navFlyout" class="nav-flyout">
-          <div
-            class="flyout-item"
-            :class="{ highlighted: hoveredNav === '__new' }"
-            @mouseenter="hoveredNav = '__new'"
-            @click="handleNewChat"
-          >新对话</div>
-          <div
-            v-for="item in navItems"
-            :key="item.path"
-            class="flyout-item"
-            :class="{ highlighted: hoveredNav === item.path, active: isActive(item.path) }"
-            @mouseenter="hoveredNav = item.path"
-            @click="router.push(item.path)"
-          >{{ item.label }}</div>
-        </div>
-      </div>
-
-      <div v-if="!sidebarCollapsed && chatStore.sorted.length" class="session-section">
-        <div class="session-label">最近对话</div>
+      <div v-if="!sidebarCollapsed" class="session-section">
+        <div class="session-label">最近</div>
         <div class="session-list">
           <div
             v-for="session in chatStore.sorted"
@@ -92,11 +63,9 @@ const router = useRouter()
 const route = useRoute()
 const chatStore = useChatStore()
 const sidebarCollapsed = ref(false)
-const navFlyout = ref(false)
-const hoveredNav = ref('')
 
 const navItems = [
-  { path: '/chat', icon: 'chat', label: '聊天问答' },
+  { path: '/chat', icon: 'edit-1', label: '新聊天' },
   { path: '/knowledge-bases', icon: 'server', label: '知识库' },
   { path: '/retrieval', icon: 'search', label: '检索测试' },
   { path: '/faq', icon: 'help-circle', label: 'FAQ 管理' },
@@ -128,20 +97,20 @@ const handleDeleteSession = (id: string) => {
 }
 
 .sidebar {
-  width: 260px;
+  width: var(--kl-sidebar-width);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   background: var(--td-bg-color-sidebar);
-  padding: 14px 10px;
-  gap: 14px;
-  transition: width 0.2s ease;
+  padding: var(--kl-space-3) var(--kl-space-2);
+  gap: var(--kl-space-3);
+  transition: width var(--kl-duration-normal) var(--kl-ease-default);
   position: relative;
 }
 
 .sidebar.collapsed {
-  width: 56px;
-  padding: 14px 8px;
+  width: var(--kl-sidebar-collapsed);
+  padding: var(--kl-space-3) var(--kl-space-2);
 }
 
 .sidebar.collapsed .nav-item {
@@ -165,56 +134,47 @@ const handleDeleteSession = (id: string) => {
   gap: 8px;
 }
 
-.nav-wrapper {
+/* 收起态图标 tooltip */
+.sidebar.collapsed .nav-item {
   position: relative;
 }
 
-.nav-flyout {
+.sidebar.collapsed .nav-item::after {
+  content: attr(data-label);
   position: absolute;
-  top: 0;
-  left: 100%;
-  min-width: 130px;
-  padding: 4px 4px 4px 10px;
-  border-radius: var(--td-radius-large);
-  background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  box-shadow: var(--td-shadow-2);
-  z-index: 100;
-}
-
-.nav-flyout .flyout-item {
-  display: flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 12px;
-  font-size: 14px;
-  border-radius: var(--td-radius-medium);
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) scale(0.92);
+  padding: var(--kl-space-1) var(--kl-space-2);
+  background: var(--td-gray-color-13);
+  color: #fff;
+  font-size: var(--kl-text-xs);
+  font-weight: var(--kl-weight-medium);
+  border-radius: var(--kl-radius-sm);
   white-space: nowrap;
-  color: var(--td-text-color-secondary);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--kl-duration-fast) var(--kl-ease-default),
+    transform var(--kl-duration-fast) var(--kl-ease-default);
+  z-index: var(--kl-z-flyout);
 }
 
-.nav-flyout .flyout-item.highlighted {
-  background: var(--td-gray-color-3);
-  color: var(--td-text-color-primary);
-  font-weight: 600;
-}
-
-.nav-flyout .flyout-item.active {
-  color: var(--td-brand-color);
+.sidebar.collapsed .nav-item:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
 }
 
 .sidebar-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: var(--td-radius-small);
+  width: var(--kl-icon-lg);
+  height: var(--kl-icon-lg);
+  border-radius: var(--kl-radius-sm);
   cursor: pointer;
   color: var(--td-text-color-placeholder);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default),
+    color var(--kl-duration-fast) var(--kl-ease-default);
   flex-shrink: 0;
 }
 
@@ -226,27 +186,27 @@ const handleDeleteSession = (id: string) => {
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 8px;
+  gap: var(--kl-space-2);
+  padding: var(--kl-space-1) var(--kl-space-2);
   cursor: pointer;
 }
 
 .logo-mark {
   width: 28px;
   height: 28px;
-  border-radius: var(--td-radius-medium);
-  background: var(--td-brand-color);
+  border-radius: var(--kl-radius-md);
+  background: var(--kl-gradient);
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--kl-text-sm);
+  font-weight: var(--kl-weight-bold);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .logo-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: var(--kl-text-md);
+  font-weight: var(--kl-weight-bold);
   color: var(--td-text-color-primary);
 }
 
@@ -259,24 +219,24 @@ const handleDeleteSession = (id: string) => {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: var(--td-radius-medium);
-  font-size: 14px;
+  gap: var(--kl-space-2);
+  height: var(--kl-control-height-md);
+  padding: 0 var(--kl-space-3);
+  border-radius: var(--kl-radius-pill);
+  font-size: var(--kl-text-base);
   color: var(--td-text-color-primary);
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .nav-item:hover {
-  background: var(--td-gray-color-3);
+  background: var(--td-gray-color-2);
 }
 
 .nav-item.active {
   background: var(--td-gray-color-3);
-  font-weight: 600;
+  font-weight: var(--kl-weight-semibold);
 }
 
 .session-section {
@@ -289,10 +249,29 @@ const handleDeleteSession = (id: string) => {
 }
 
 .session-label {
-  font-size: 12px;
-  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--kl-text-xs);
+  font-weight: var(--kl-weight-medium);
   color: var(--td-text-color-placeholder);
-  padding: 0 10px 4px;
+  padding: 0 var(--kl-space-2) var(--kl-space-1);
+}
+
+.session-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--kl-radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.session-add:hover {
+  background: var(--td-gray-color-3);
+  color: var(--td-text-color-primary);
 }
 
 .session-list {
@@ -306,12 +285,12 @@ const handleDeleteSession = (id: string) => {
 .session-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--kl-space-2);
   height: 34px;
-  padding: 0 10px;
-  border-radius: var(--td-radius-medium);
+  padding: 0 var(--kl-space-2);
+  border-radius: var(--kl-radius-lg);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .session-item:hover {
@@ -325,7 +304,7 @@ const handleDeleteSession = (id: string) => {
 .session-title {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-primary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -339,7 +318,7 @@ const handleDeleteSession = (id: string) => {
   flex-shrink: 0;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .session-item:hover .session-delete {
@@ -355,7 +334,7 @@ const handleDeleteSession = (id: string) => {
   min-width: 0;
   overflow-y: auto;
   background: var(--td-bg-color-page);
-  padding: 24px 32px;
+  padding: var(--kl-space-8) var(--kl-space-10);
 }
 
 .layout-content.no-pad {

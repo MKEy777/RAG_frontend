@@ -106,10 +106,10 @@ const handleClick = (e: MouseEvent) => {
 
 .user-bubble {
   max-width: 70%;
-  background: var(--td-gray-color-2);
+  background: #F0F4F9;
   color: var(--td-text-color-primary);
-  padding: 10px 18px;
-  border-radius: 24px;
+  padding: var(--kl-space-2) var(--kl-space-4);
+  border-radius: var(--kl-radius-pill);
   font-size: 15px;
   line-height: 1.6;
   white-space: pre-wrap;
@@ -126,34 +126,34 @@ const handleClick = (e: MouseEvent) => {
 .thinking {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--kl-space-2);
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
 }
 
 .msg-error {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 13px;
+  gap: var(--kl-space-1);
+  margin-top: var(--kl-space-2);
+  font-size: var(--kl-text-sm);
   color: var(--td-error-color);
 }
 
 .popover-wrap {
   position: absolute;
-  z-index: 10;
+  z-index: var(--kl-z-sticky);
 }
 
 .md-body {
-  font-size: 16px;
+  font-size: var(--kl-text-md);
   line-height: 1.75;
   color: var(--td-text-color-primary);
   word-break: break-word;
 }
 
 .md-body :deep(p) {
-  margin: 0 0 12px;
+  margin: 0 0 var(--kl-space-3);
 }
 
 .md-body :deep(p:last-child) {
@@ -164,17 +164,17 @@ const handleClick = (e: MouseEvent) => {
 .md-body :deep(h2),
 .md-body :deep(h3),
 .md-body :deep(h4) {
-  margin: 14px 0 8px;
-  font-weight: 600;
+  margin: var(--kl-space-3) 0 var(--kl-space-2);
+  font-weight: var(--kl-weight-semibold);
   line-height: 1.4;
 }
 
 .md-body :deep(h1) {
-  font-size: 18px;
+  font-size: var(--kl-text-lg);
 }
 
 .md-body :deep(h2) {
-  font-size: 16px;
+  font-size: var(--kl-text-md);
 }
 
 .md-body :deep(h3),
@@ -184,8 +184,8 @@ const handleClick = (e: MouseEvent) => {
 
 .md-body :deep(ul),
 .md-body :deep(ol) {
-  padding-left: 22px;
-  margin: 6px 0;
+  padding-left: var(--kl-space-5);
+  margin: var(--kl-space-1) 0;
 }
 
 .md-body :deep(li) {
@@ -194,19 +194,19 @@ const handleClick = (e: MouseEvent) => {
 
 .md-body :deep(code) {
   font-family: var(--app-font-family-mono);
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   background: var(--td-bg-color-secondarycontainer);
-  border-radius: var(--td-radius-default);
+  border-radius: var(--kl-radius-md);
   padding: 1px 5px;
 }
 
 .md-body :deep(pre) {
   background: var(--td-gray-color-1);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-medium);
-  padding: 12px 14px;
+  border: var(--kl-border-width) solid var(--kl-border-color);
+  border-radius: var(--kl-radius-md);
+  padding: var(--kl-space-3) var(--kl-space-3);
   overflow-x: auto;
-  margin: 10px 0;
+  margin: var(--kl-space-2) 0;
 }
 
 .md-body :deep(pre code) {
@@ -217,21 +217,21 @@ const handleClick = (e: MouseEvent) => {
 
 .md-body :deep(blockquote) {
   border-left: 3px solid var(--td-gray-color-4);
-  margin: 8px 0;
-  padding: 4px 12px;
+  margin: var(--kl-space-2) 0;
+  padding: var(--kl-space-1) var(--kl-space-3);
   color: var(--td-text-color-secondary);
 }
 
 .md-body :deep(table) {
   border-collapse: collapse;
-  margin: 10px 0;
-  font-size: 13px;
+  margin: var(--kl-space-2) 0;
+  font-size: var(--kl-text-sm);
 }
 
 .md-body :deep(th),
 .md-body :deep(td) {
-  border: 1px solid var(--td-component-border);
-  padding: 6px 10px;
+  border: var(--kl-border-width) solid var(--kl-border-color-strong);
+  padding: var(--kl-space-1) var(--kl-space-2);
 }
 
 .md-body :deep(th) {
@@ -248,20 +248,21 @@ const handleClick = (e: MouseEvent) => {
   justify-content: center;
   min-width: 16px;
   height: 16px;
-  padding: 0 4px;
+  padding: 0 var(--kl-space-1);
   margin: 0 2px;
-  border-radius: var(--td-radius-round);
+  border-radius: var(--kl-radius-full);
   background: var(--td-gray-color-3);
   color: var(--td-text-color-primary);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--kl-text-xs);
+  font-weight: var(--kl-weight-semibold);
   cursor: pointer;
   vertical-align: super;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default),
+    color var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .md-body :deep(sup.citation:hover) {
-  background: var(--td-brand-color);
+  background: var(--kl-accent);
   color: #fff;
 }
 </style>

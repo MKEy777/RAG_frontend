@@ -20,7 +20,7 @@
                 <t-textarea
                   v-model="formData.query"
                   placeholder="请输入查询内容"
-                  :autosize="{ minRows: 2, maxRows: 5 }"
+                  :autosize="{ minRows: 1, maxRows: 5 }"
                 />
                 <t-button
                   theme="primary"
@@ -159,16 +159,17 @@
           <span>× BM25，RRF = 1/(</span>
           <t-input-number v-model="advParams.rrf_k" :min="1" :max="1000" size="small" theme="column" class="f-input" />
           <span>+ rank)</span>
+          <span class="f-note">k 越大排名差异越小</span>
         </div>
       </div>
       <div class="params-row">
         <t-form-item label="召回数" help="每通道检索量">
           <t-input-number v-model="advParams.recall_top_k" :min="10" :max="200" :step="10" size="small" theme="column" />
         </t-form-item>
-        <t-form-item label="向量阈值" help="过滤低分向量">
+        <t-form-item label="Embedding 阈值" help="过滤低分向量">
           <t-input-number v-model="advParams.vector_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
         </t-form-item>
-        <t-form-item label="关键词阈值" help="过滤低分关键词">
+        <t-form-item label="BM25 阈值" help="过滤低分关键词">
           <t-input-number v-model="advParams.keyword_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
         </t-form-item>
         <t-form-item label="Reranker 阈值" help="丢弃低分结果">
@@ -224,8 +225,30 @@ const canSearch = computed(() => {
   return formData.kb_ids.length > 0 && formData.query.trim().length > 0
 })
 
+let lastWikiBoost = 1.3
+let weightLock = false
+
+watch(() => advParams.vector_weight, (v) => {
+  if (weightLock) return
+  weightLock = true
+  advParams.keyword_weight = Math.round((1 - v) * 100) / 100
+  weightLock = false
+})
+
+watch(() => advParams.keyword_weight, (v) => {
+  if (weightLock) return
+  weightLock = true
+  advParams.vector_weight = Math.round((1 - v) * 100) / 100
+  weightLock = false
+})
+
 watch(() => formData.enable_wiki_boost, (on) => {
-  advParams.wiki_boost = on ? 1.3 : 1
+  if (on) {
+    advParams.wiki_boost = lastWikiBoost
+  } else {
+    lastWikiBoost = advParams.wiki_boost
+    advParams.wiki_boost = 1
+  }
 })
 
 const getChannelTheme = (channel: string) => {
@@ -291,13 +314,13 @@ onMounted(fetchKbOptions)
 
 <style scoped>
 .retrieval-test {
-  max-width: 1200px;
+  max-width: var(--kl-content-max-width);
   margin: 0 auto;
 }
 
 .retrieval-test :deep(.page-header) {
-  padding-bottom: 8px;
-  margin-bottom: 12px;
+  padding-bottom: var(--kl-space-2);
+  margin-bottom: var(--kl-space-3);
 }
 
 .retrieval-test :deep(.t-card__title) {
@@ -305,20 +328,20 @@ onMounted(fetchKbOptions)
 }
 
 .retrieval-test :deep(.t-card__header) {
-  padding: 10px 16px 0;
+  padding: var(--kl-space-2) var(--kl-space-4) 0;
 }
 
 .retrieval-test :deep(.t-card__body) {
-  padding: 8px 16px 12px;
+  padding: var(--kl-space-2) var(--kl-space-4) var(--kl-space-3);
 }
 
 .compact-form :deep(.t-form__item) {
-  margin-bottom: 8px;
+  margin-bottom: var(--kl-space-2);
 }
 
 .query-row {
   display: flex;
-  gap: 8px;
+  gap: var(--kl-space-2);
   width: 100%;
 }
 
@@ -328,24 +351,23 @@ onMounted(fetchKbOptions)
 
 .search-btn {
   flex-shrink: 0;
-  align-self: flex-end;
-  height: 32px;
+  align-self: stretch;
 }
 
 .switch-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0 12px;
+  gap: 0 var(--kl-space-3);
 }
 
 .switch-grid :deep(.t-form__item) {
-  margin-bottom: 4px;
+  margin-bottom: var(--kl-space-1);
 }
 
 .wiki-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--kl-space-2);
 }
 
 .wiki-num {
@@ -363,15 +385,15 @@ onMounted(fetchKbOptions)
 .adv-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  padding: 4px 12px;
-  font-size: 13px;
-  font-weight: 500;
+  gap: var(--kl-space-1);
+  margin-top: var(--kl-space-1);
+  padding: var(--kl-space-1) var(--kl-space-3);
+  font-size: var(--kl-text-sm);
+  font-weight: var(--kl-weight-medium);
   color: var(--td-text-color-secondary);
   cursor: pointer;
-  border-radius: var(--td-radius-medium);
-  transition: background 0.15s;
+  border-radius: var(--kl-radius-md);
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
 }
 
 .adv-toggle:hover {
@@ -381,17 +403,18 @@ onMounted(fetchKbOptions)
 .adv-card {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 20px;
-  margin-top: 4px;
-  padding: 10px 16px;
-  background: var(--td-bg-color-container);
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-large);
+  gap: var(--kl-space-4) var(--kl-space-5);
+  margin-top: var(--kl-space-1);
+  padding: var(--kl-space-2) var(--kl-space-4);
+  background: #F8F9FA;
+  border: none;
+  border-radius: var(--kl-radius-card);
+  box-shadow: var(--kl-elevation-1);
 }
 
 .params-row {
   display: flex;
-  gap: 16px;
+  gap: var(--kl-space-4);
   width: 100%;
 }
 
@@ -402,19 +425,18 @@ onMounted(fetchKbOptions)
 
 .formula-bar {
   width: 100%;
-  padding-bottom: 10px;
-  margin-bottom: 4px;
+  padding-bottom: var(--kl-space-2);
+  margin-bottom: var(--kl-space-1);
   border-bottom: 1px dashed var(--td-border-level-1-color);
 }
 
 .formula-line {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: var(--kl-space-1);
+  font-size: var(--kl-text-base);
+  font-weight: var(--kl-weight-bold);
   color: var(--td-text-color-primary);
-  font-family: 'Courier New', monospace;
   white-space: nowrap;
   overflow-x: auto;
 }
@@ -423,11 +445,18 @@ onMounted(fetchKbOptions)
   width: 72px;
 }
 
+.f-note {
+  font-size: var(--kl-text-xs);
+  font-weight: var(--kl-weight-regular);
+  color: var(--td-text-color-placeholder);
+  margin-left: var(--kl-space-2);
+}
+
 .slider-value {
-  margin-left: 12px;
+  margin-left: var(--kl-space-3);
   min-width: 30px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--kl-text-xs);
 }
 
 .empty-state {
@@ -437,12 +466,12 @@ onMounted(fetchKbOptions)
 .hits-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--kl-space-3);
 }
 
 .hit-card {
-  border: 1px solid var(--td-component-stroke);
-  border-radius: var(--td-radius-large);
+  border: 1px solid #E8EAED;
+  border-radius: var(--kl-radius-card);
 }
 
 .faq-hit-card {
@@ -450,37 +479,37 @@ onMounted(fetchKbOptions)
 }
 
 .faq-section-label {
-  margin-bottom: 4px;
+  margin-bottom: var(--kl-space-1);
 }
 
 .hit-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--kl-space-2);
   flex-wrap: wrap;
 }
 
 .hit-score {
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
 }
 
 .hit-meta {
   display: flex;
-  gap: 16px;
-  font-size: 12px;
+  gap: var(--kl-space-4);
+  font-size: var(--kl-text-xs);
   color: var(--td-text-color-placeholder);
-  margin-bottom: 8px;
+  margin-bottom: var(--kl-space-2);
 }
 
 .hit-content {
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 13px;
+  font-size: var(--kl-text-sm);
   line-height: 1.6;
   background: var(--td-bg-color-secondarycontainer);
-  padding: 12px;
-  border-radius: var(--td-radius-default);
+  padding: var(--kl-space-3);
+  border-radius: var(--kl-radius-md);
   max-height: 300px;
   overflow: auto;
 }
