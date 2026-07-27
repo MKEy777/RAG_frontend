@@ -16,6 +16,8 @@ export interface RetrievalRequest {
   keyword_weight?: number
   rerank_threshold?: number
   wiki_boost?: number
+  search_mode?: 'hybrid' | 'vector' | 'fulltext'
+  save_history?: boolean
 }
 
 export interface RetrievalHit {
@@ -31,7 +33,6 @@ export interface RetrievalHit {
 export interface RetrievalResponse {
   hits: RetrievalHit[]
   faq_hits: RetrievalHit[]
-  request_id?: string
 }
 
 export async function retrieve(
@@ -39,4 +40,30 @@ export async function retrieve(
 ): Promise<RetrievalResponse> {
   const { data } = await client.post('/retrieval', params)
   return data
+}
+
+export interface RetrievalHistoryItem {
+  id: string
+  kb_ids: string[]
+  query: string
+  params_snapshot: Record<string, unknown>
+  hit_count: number
+  top_score: number
+  duration_ms: number
+  created_at: string
+}
+
+export async function listRetrievalHistory(
+  kbId?: string,
+  page = 1,
+  size = 20
+): Promise<{ items: RetrievalHistoryItem[]; total: number; page: number; size: number }> {
+  const { data } = await client.get('/retrieval/history', {
+    params: { kb_id: kbId, page, size },
+  })
+  return data
+}
+
+export async function deleteRetrievalHistory(testId: string): Promise<void> {
+  await client.delete(`/retrieval/history/${testId}`)
 }

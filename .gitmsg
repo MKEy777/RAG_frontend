@@ -1,0 +1,11 @@
+feat: internal pages redesign (Phase 0-8) 
+ 
+- Add useKbList, SearchSettingsForm, DocTable, CreateView, ImportWizard 
+- ListView: workflow banner + filter sidebar + card metadata 
+- DetailView: tabs + toolbar + SearchSettingsForm dialog 
+- ChunksView: index/chars/status + search + highlight tokens 
+- WikiView: 3-column layout + right panel + feedback 
+- TestView: history + RequestID + graph filter + settings dialog 
+- Router: +create +import-wizard routes 
+- API: KnowledgeBase/RetrievalResponse interface extensions 
+- Token audit: replace hardcoded hex with semantic tokens 

@@ -31,6 +31,9 @@
           知识图谱
           <t-tag theme="danger" variant="light" size="small" style="margin-left: 4px">NEW</t-tag>
         </t-button>
+        <t-button size="small" variant="outline" :loading="suggestIconLoading" @click="handleSuggestIcon">
+          AI 图标
+        </t-button>
         <t-button variant="outline" @click="openSettings">
           <template #icon><t-icon name="setting" /></template>
           设置
@@ -77,6 +80,45 @@
           <t-button size="small" theme="danger" variant="outline" :loading="batchWorking">批量删除</t-button>
         </t-popconfirm>
         <t-button size="small" variant="text" @click="selectedIds = []">取消选择</t-button>
+      </div>
+
+      <div class="filter-bar">
+        <t-input
+          v-model="filters.keyword"
+          placeholder="搜索文件名..."
+          clearable
+          size="small"
+          class="filter-input"
+        >
+          <template #prefix-icon><t-icon name="search" /></template>
+        </t-input>
+        <t-select
+          v-model="filters.status"
+          placeholder="状态"
+          clearable
+          size="small"
+          class="filter-select"
+          :options="[
+            { label: '处理中', value: 'processing' },
+            { label: '已完成', value: 'completed' },
+            { label: '失败', value: 'failed' },
+          ]"
+        />
+        <t-select
+          v-model="filters.file_type"
+          placeholder="文件类型"
+          clearable
+          size="small"
+          class="filter-select"
+          :options="[
+            { label: 'PDF', value: 'pdf' },
+            { label: 'Word', value: 'docx' },
+            { label: 'Excel', value: 'xlsx' },
+            { label: 'PPT', value: 'pptx' },
+            { label: 'Markdown', value: 'md' },
+            { label: 'TXT', value: 'txt' },
+          ]"
+        />
       </div>
 
       <t-table
@@ -211,11 +253,34 @@
     <t-dialog v-model:visible="urlDialogVisible" header="从 URL 导入" width="480px" :confirm-btn="{ loading: urlImporting }" @confirm="handleImportUrl">
       <t-input v-model="importUrlValue" placeholder="https://..." />
     </t-dialog>
+
+    <t-dialog
+      v-model:visible="editDialogVisible"
+      header="编辑文档属性"
+      width="560px"
+      :confirm-btn="{ content: '保存' }"
+      @confirm="handleSaveDocMeta"
+    >
+      <t-form v-if="editDoc" label-align="top">
+        <t-form-item label="标题">
+          <t-input v-model="editForm.title" />
+        </t-form-item>
+        <t-form-item label="标签">
+          <t-tag-input v-model="editForm.tags" placeholder="输入后回车添加" />
+        </t-form-item>
+        <t-form-item label="权威度">
+          <t-slider v-model="editForm.authority" :min="0" :max="100" />
+        </t-form-item>
+        <t-form-item label="启用 Wiki">
+          <t-switch v-model="editForm.wiki_enabled" />
+        </t-form-item>
+      </t-form>
+    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import type { TableProps, DropdownOption as DropdownItem } from 'tdesign-vue-next'
@@ -224,7 +289,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import DocDetailDrawer from '@/components/DocDetailDrawer.vue'
 import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
 import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
-import { getKnowledgeBase, updateKnowledgeBase, type KnowledgeBase } from '@/api/knowledgeBase'
+import { getKnowledgeBase, updateKnowledgeBase, suggestIcon, type KnowledgeBase } from '@/api/knowledgeBase'
 import {
   listDocuments,
   deleteDocument,
@@ -232,7 +297,9 @@ import {
   reparseDocument,
   documentDownloadUrl,
   importUrl,
+  updateDocument,
   type Document,
+  type DocUpdateBody,
 } from '@/api/documents'
 import { statusTheme, statusText } from '@/utils/format'
 import { useDocStatusStream } from '@/composables/useDocStatusPolling'
@@ -255,10 +322,31 @@ const drawerVisible = ref(false)
 const drawerDoc = ref<Document | null>(null)
 const drawerTab = ref('info')
 
+const filters = reactive({
+  keyword: '',
+  status: '' as string,
+  file_type: '' as string,
+})
+
 const renameVisible = ref(false)
 const renameValue = ref('')
 const renaming = ref(false)
 let renameTarget: Document | null = null
+
+const suggestIconLoading = ref(false)
+const handleSuggestIcon = async () => {
+  suggestIconLoading.value = true
+  try {
+    const res = await suggestIcon(kbId)
+    await updateKnowledgeBase(kbId, { icon: res.icon })
+    kb.value = await getKnowledgeBase(kbId)
+    MessagePlugin.success(`已设置图标: ${res.icon}`)
+  } catch {
+    MessagePlugin.error('推荐图标失败')
+  } finally {
+    suggestIconLoading.value = false
+  }
+}
 
 const settingsVisible = ref(false)
 const savingSettings = ref(false)
@@ -282,6 +370,36 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const urlDialogVisible = ref(false)
 const importUrlValue = ref('')
 const urlImporting = ref(false)
+
+const editDialogVisible = ref(false)
+const editDoc = ref<Document | null>(null)
+const editForm = reactive<DocUpdateBody>({
+  title: '',
+  tags: [],
+  authority: 0,
+  wiki_enabled: false,
+})
+
+const openEditDialog = (doc: Document) => {
+  editDoc.value = doc
+  editForm.title = doc.title || ''
+  editForm.tags = doc.tags ? [...doc.tags] : []
+  editForm.authority = doc.authority ?? 0
+  editForm.wiki_enabled = doc.wiki_enabled ?? false
+  editDialogVisible.value = true
+}
+
+const handleSaveDocMeta = async () => {
+  if (!editDoc.value) return
+  try {
+    await updateDocument(editDoc.value.id, { ...editForm })
+    MessagePlugin.success('已更新')
+    editDialogVisible.value = false
+    fetchDocuments()
+  } catch {
+    MessagePlugin.error('更新失败')
+  }
+}
 
 async function handleImportUrl() {
   if (!importUrlValue.value) return
@@ -313,7 +431,11 @@ const columns: TableProps['columns'] = [
 const fetchDocuments = async () => {
   docLoading.value = true
   try {
-    const res = await listDocuments(kbId, pagination.current, pagination.pageSize)
+    const filterParams: Record<string, string> = {}
+    if (filters.keyword.trim()) filterParams.keyword = filters.keyword.trim()
+    if (filters.status) filterParams.status = filters.status
+    if (filters.file_type) filterParams.file_type = filters.file_type
+    const res = await listDocuments(kbId, pagination.current, pagination.pageSize, filterParams)
     documents.value = res.items
     pagination.total = res.total
     listPolling.startIfNeeded()
@@ -325,6 +447,14 @@ const fetchDocuments = async () => {
 const listPolling = useDocStatusStream(kbId, () => documents.value, fetchDocuments)
 const { uploading, folderInputRef, uploadFiles, startImageSupplement, handleFolderSelected } =
   useDocUpload(kbId, fetchDocuments)
+
+watch(
+  () => [filters.keyword, filters.status, filters.file_type],
+  () => {
+    pagination.current = 1
+    fetchDocuments()
+  }
+)
 
 const handlePageChange = (pageInfo: { current: number; pageSize: number }) => {
   pagination.current = pageInfo.current
@@ -358,6 +488,7 @@ const openDrawer = (doc: Document, tab: string) => {
 const moreOptions = (row: Document) => {
   const opts: { content: string; value: string; theme?: string }[] = []
   if (row.parse_status === 'completed') opts.push({ content: '查看切片', value: 'chunks' })
+  opts.push({ content: '编辑属性', value: 'edit' })
   opts.push({ content: '重新解析', value: 'reparse' })
   opts.push({ content: '重命名', value: 'rename' })
   opts.push({ content: '下载原文件', value: 'download' })
@@ -369,6 +500,9 @@ const handleMore = (action: string, row: Document) => {
   switch (action) {
     case 'chunks':
       router.push(`/knowledge-bases/${kbId}/documents/${row.id}/chunks`)
+      break
+    case 'edit':
+      openEditDialog(row)
       break
     case 'reparse':
       handleReparse(row.id)
@@ -569,6 +703,23 @@ onMounted(async () => {
 .batch-count {
   color: var(--td-text-color-secondary);
   margin-right: var(--kl-space-1);
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--kl-space-2);
+  margin-bottom: var(--kl-space-3);
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-select {
+  width: 130px;
+  flex-shrink: 0;
 }
 
 .status-tag {

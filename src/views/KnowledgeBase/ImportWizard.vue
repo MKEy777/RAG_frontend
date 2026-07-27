@@ -77,37 +77,57 @@
       </div>
 
       <!-- Step 3: 分段设置 -->
-      <div v-show="currentStep === 2" class="step-content step-layout">
-        <div class="layout-files">
-          <div class="layout-panel-title">分段规则</div>
-          <div
-            v-for="opt in segmentOptions"
-            :key="opt.value"
-            class="segment-option"
-            :class="{ active: segmentStrategy === opt.value }"
-            @click="segmentStrategy = opt.value"
-          >
-            <span class="segment-radio" :class="{ checked: segmentStrategy === opt.value }" />
-            <div class="rule-text">
-              <span class="rule-name">{{ opt.label }}</span>
-              <span class="rule-desc">{{ opt.desc }}</span>
+      <div v-show="currentStep === 2" class="step-content">
+        <div class="step-layout">
+          <div class="layout-files">
+            <div class="layout-panel-title">分段规则</div>
+            <div
+              v-for="opt in segmentOptions"
+              :key="opt.value"
+              class="segment-option"
+              :class="{ active: segmentStrategy === opt.value }"
+              @click="segmentStrategy = opt.value"
+            >
+              <span class="segment-radio" :class="{ checked: segmentStrategy === opt.value }" />
+              <div class="rule-text">
+                <span class="rule-name">{{ opt.label }}</span>
+                <span class="rule-desc">{{ opt.desc }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="layout-preview">
+            <div class="layout-panel-title">文档内容</div>
+            <div class="layout-placeholder">
+              <t-icon name="file-paste" size="48px" />
+              <p>文档内容预览</p>
+            </div>
+          </div>
+          <div class="layout-progress">
+            <div class="layout-panel-title">分段结构预览</div>
+            <div class="layout-placeholder">
+              <t-icon name="view-list" size="48px" />
+              <p>分段结构预览</p>
             </div>
           </div>
         </div>
-        <div class="layout-preview">
-          <div class="layout-panel-title">文档内容</div>
-          <div class="layout-placeholder">
-            <t-icon name="file-paste" size="48px" />
-            <p>文档内容预览</p>
-          </div>
-        </div>
-        <div class="layout-progress">
-          <div class="layout-panel-title">分段结构预览</div>
-          <div class="layout-placeholder">
-            <t-icon name="view-list" size="48px" />
-            <p>分段结构预览</p>
-          </div>
-        </div>
+
+        <t-collapse>
+          <t-collapse-panel value="chunk-preview" header="切块预览">
+            <t-textarea v-model="previewText" placeholder="粘贴文本预览切块效果" :autosize="{ minRows: 3, maxRows: 6 }" />
+            <t-button size="small" :loading="chunkPreviewLoading" @click="handlePreviewChunks" style="margin-top: 8px">
+              预览切块
+            </t-button>
+            <div v-if="chunkPreviewResult" class="chunk-preview-output">
+              <t-tag variant="light">模式: {{ chunkPreviewResult.mode }}</t-tag>
+              <div v-if="chunkPreviewResult.chunks" class="chunk-list">
+                <div v-for="(c, i) in chunkPreviewResult.chunks" :key="i" class="chunk-item">
+                  <t-tag size="small" theme="primary">{{ i + 1 }}</t-tag>
+                  <span class="chunk-text">{{ c.text.slice(0, 200) }}{{ c.text.length > 200 ? '...' : '' }}</span>
+                </div>
+              </div>
+            </div>
+          </t-collapse-panel>
+        </t-collapse>
       </div>
     </div>
 
@@ -124,6 +144,7 @@ import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
+import { previewChunks, type ChunkPreviewResult } from '@/api/documents'
 
 const route = useRoute()
 const router = useRouter()
@@ -167,9 +188,24 @@ const segmentOptions = [
   { value: 'toc', label: '按文档目录结构切分', desc: '生成树状目录及对应分段' },
 ]
 
+const chunkPreviewResult = ref<ChunkPreviewResult | null>(null)
+const chunkPreviewLoading = ref(false)
+const previewText = ref('')
+
+const handlePreviewChunks = async () => {
+  if (!previewText.value.trim()) return
+  chunkPreviewLoading.value = true
+  try {
+    chunkPreviewResult.value = await previewChunks({ text: previewText.value })
+  } catch {
+    MessagePlugin.error('切块预览失败')
+  } finally {
+    chunkPreviewLoading.value = false
+  }
+}
+
 const handleSubmit = () => {
-  // TODO: API — 提交解析配置到后端
-  MessagePlugin.success('配置已提交')
+  MessagePlugin.info('解析配置功能正在开发中，当前使用默认配置')
   router.push(`/knowledge-bases/${kbId}`)
 }
 </script>
@@ -334,4 +370,9 @@ const handleSubmit = () => {
   padding-top: var(--kl-space-4);
   border-top: var(--kl-border-width) solid var(--td-component-stroke);
 }
+
+.chunk-preview-output { margin-top: var(--kl-space-3); }
+.chunk-list { display: flex; flex-direction: column; gap: var(--kl-space-2); margin-top: var(--kl-space-2); }
+.chunk-item { display: flex; gap: var(--kl-space-2); align-items: flex-start; }
+.chunk-text { font-size: var(--kl-text-sm); color: var(--td-text-color-primary); line-height: 1.5; }
 </style>

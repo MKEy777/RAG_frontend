@@ -36,6 +36,16 @@
             @click="filterType = opt.value"
           >{{ opt.label }}</div>
         </div>
+        <div v-if="groups.length" class="filter-group">
+          <div class="filter-label">分组</div>
+          <div
+            v-for="g in groups"
+            :key="g"
+            class="filter-item"
+            :class="{ active: filterGroup === g }"
+            @click="filterGroup = filterGroup === g ? '' : g"
+          >{{ g }}</div>
+        </div>
         <div class="filter-group">
           <div class="filter-label">功能</div>
           <div
@@ -91,9 +101,7 @@
               <t-tag v-if="kb.enable_graph" variant="outline" size="small">图谱</t-tag>
             </div>
             <div class="kb-card-meta">
-              <span>{{ kb.document_count ?? '-' }} 个文档</span>
-              <span>{{ kb.owner ?? '-' }}</span>
-              <span>{{ kb.updated_at ? kb.updated_at.slice(0, 10) : '-' }}</span>
+              <span>{{ kb.doc_count ?? '-' }} 个文档</span>
             </div>
           </div>
         </div>
@@ -119,6 +127,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import {
   listKnowledgeBases,
   deleteKnowledgeBase,
+  listGroups,
   type KnowledgeBase,
 } from '@/api/knowledgeBase'
 
@@ -130,6 +139,8 @@ const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 const sortBy = ref('updated')
 const filterType = ref('')
 const filterFeature = ref('')
+const groups = ref<string[]>([])
+const filterGroup = ref('')
 
 const workflowSteps = [
   { icon: 'cloud-upload', title: '上传文档', desc: '上传本地文件或导入网页' },
@@ -154,6 +165,7 @@ const filteredBases = computed(() => {
   if (filterType.value) list = list.filter((kb) => kb.type === filterType.value)
   if (filterFeature.value === 'wiki') list = list.filter((kb) => kb.enable_wiki)
   if (filterFeature.value === 'graph') list = list.filter((kb) => kb.enable_graph)
+  if (filterGroup.value) list = list.filter((kb) => kb.group_name === filterGroup.value)
   if (sortBy.value === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
   return list
 })
@@ -179,7 +191,13 @@ const handleDelete = async (id: string) => {
   }
 }
 
-onMounted(fetchData)
+onMounted(async () => {
+  fetchData()
+  try {
+    const res = await listGroups()
+    groups.value = res.groups
+  } catch { /* ignore */ }
+})
 </script>
 
 <style scoped>

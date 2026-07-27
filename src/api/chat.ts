@@ -6,6 +6,7 @@ export interface ChatParams {
   query: string
   history: { role: string; content: string }[]
   enable_wiki_boost: boolean
+  enable_graph?: boolean
   session_id?: string | null
 }
 

@@ -9,6 +9,14 @@
           style="width: 240px"
           @change="fetchItems"
         />
+        <t-button variant="outline" :disabled="!kbId" @click="batchDialogVisible = true">
+          <template #icon><t-icon name="cloud-upload" /></template>
+          批量导入
+        </t-button>
+        <t-button variant="outline" :disabled="!kbId" @click="handleExport">
+          <template #icon><t-icon name="download" /></template>
+          导出
+        </t-button>
         <t-button theme="primary" :disabled="!kbId" @click="dialogVisible = true">
           <template #icon><t-icon name="add" /></template>
           新增条目
@@ -82,6 +90,29 @@
         </t-form-item>
       </t-form>
     </t-dialog>
+
+    <t-dialog
+      v-model:visible="batchDialogVisible"
+      header="批量导入 FAQ"
+      width="640px"
+      :confirm-btn="{ content: '导入', loading: batchSubmitting }"
+      @confirm="handleBatchImport"
+    >
+      <t-alert theme="info" message="支持 JSON 格式，每条需包含 question、answer 字段" style="margin-bottom: 12px" />
+      <t-textarea
+        v-model="batchText"
+        placeholder="粘贴 JSON 数组"
+        :autosize="{ minRows: 6, maxRows: 16 }"
+      />
+      <div v-if="batchResult" class="batch-result">
+        <t-tag :theme="batchResult.errors.length ? 'warning' : 'success'" variant="light">
+          验证 {{ batchResult.valid }} 条，导入 {{ batchResult.imported }} 条
+        </t-tag>
+        <div v-for="err in batchResult.errors" :key="err.index" class="batch-error">
+          第 {{ err.index + 1 }} 条: {{ err.error }}
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
@@ -89,7 +120,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listKnowledgeBases, type KnowledgeBase } from '@/api/knowledgeBase'
-import { listFaqItems, importFaqItem, deleteFaqItem, type FaqItem } from '@/api/faq'
+import { listFaqItems, importFaqItem, deleteFaqItem, importFaqBatch, exportFaq, type FaqItem, type FaqItemCreate, type FaqBatchResult } from '@/api/faq'
 import PageHeader from '@/components/PageHeader.vue'
 
 const kbId = ref('')
@@ -99,6 +130,10 @@ const items = ref<FaqItem[]>([])
 const loading = ref(false)
 const dialogVisible = ref(false)
 const submitting = ref(false)
+const batchDialogVisible = ref(false)
+const batchText = ref('')
+const batchSubmitting = ref(false)
+const batchResult = ref<FaqBatchResult | null>(null)
 
 const selectedKbType = computed(
   () => kbList.value.find((k) => k.id === kbId.value)?.type ?? ''
@@ -170,6 +205,51 @@ const handleDelete = async (row: FaqItem) => {
   }
 }
 
+const handleBatchImport = async () => {
+  if (!batchText.value.trim()) {
+    MessagePlugin.warning('请粘贴 JSON 数据')
+    return
+  }
+  let items: FaqItemCreate[]
+  try {
+    const parsed = JSON.parse(batchText.value)
+    if (!Array.isArray(parsed)) throw new Error('需要 JSON 数组')
+    items = parsed.map((item: Record<string, unknown>) => ({
+      question: String(item.question || ''),
+      answer: String(item.answer || ''),
+      similar_questions: Array.isArray(item.similar_questions) ? item.similar_questions.map(String) : [],
+      negative_questions: Array.isArray(item.negative_questions) ? item.negative_questions.map(String) : [],
+      tags: Array.isArray(item.tags) ? item.tags.map(String) : [],
+    }))
+  } catch (e) {
+    MessagePlugin.error(`JSON 解析失败: ${(e as Error).message}`)
+    return
+  }
+  batchSubmitting.value = true
+  try {
+    batchResult.value = await importFaqBatch(kbId.value, items)
+    if (batchResult.value.errors.length === 0) {
+      MessagePlugin.success(`成功导入 ${batchResult.value.imported} 条`)
+      batchDialogVisible.value = false
+      batchText.value = ''
+      batchResult.value = null
+      fetchItems()
+    }
+  } catch {
+    MessagePlugin.error('批量导入失败')
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
+const handleExport = async () => {
+  try {
+    await exportFaq(kbId.value)
+  } catch {
+    MessagePlugin.error('导出失败')
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await listKnowledgeBases(1, 100)
@@ -203,4 +283,7 @@ onMounted(async () => {
   font-size: var(--kl-text-sm);
   color: var(--td-text-color-secondary);
 }
+
+.batch-result { margin-top: var(--kl-space-3); }
+.batch-error { font-size: var(--kl-text-sm); color: var(--td-error-color); margin-top: 4px; }
 </style>

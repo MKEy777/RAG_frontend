@@ -38,7 +38,9 @@
         <h3 class="section-title">高级设置</h3>
         <t-form :label-width="90">
           <t-form-item label="向量模型">
-            <t-input v-model="form.embedding_model_id" placeholder="Qwen/Qwen3-Embedding-0.6B" />
+            <t-select v-model="form.embedding_model_id" placeholder="选择嵌入模型">
+              <t-option v-for="m in embeddingModels" :key="m.id" :value="m.id" :label="`${m.model} (${m.dims}维)`" />
+            </t-select>
           </t-form-item>
           <t-form-item label="启用 Wiki">
             <t-switch v-model="form.enable_wiki" />
@@ -64,16 +66,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import PageHeader from '@/components/PageHeader.vue'
 import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
 import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
-import { createKnowledgeBase } from '@/api/knowledgeBase'
+import { createKnowledgeBase, listEmbeddingModels } from '@/api/knowledgeBase'
 
 const router = useRouter()
 const creating = ref(false)
+const embeddingModels = ref<{ id: string; model: string; dims: number }[]>([])
 
 const form = reactive({
   name: '',
@@ -91,6 +94,13 @@ const searchSettings = ref<SearchSettings>({
   topK: 10,
   minScore: 0.5,
   minScoreEnabled: true,
+})
+
+onMounted(async () => {
+  try {
+    const res = await listEmbeddingModels()
+    embeddingModels.value = res.models
+  } catch { /* fallback */ }
 })
 
 const handleCreate = async () => {

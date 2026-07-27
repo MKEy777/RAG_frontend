@@ -47,6 +47,17 @@
             </t-space>
           </div>
 
+          <div class="folder-actions">
+            <t-button size="small" variant="outline" @click="showNewFolder = !showNewFolder">
+              <template #icon><t-icon name="folder-add" /></template>
+              新建文件夹
+            </t-button>
+            <div v-if="showNewFolder" class="new-folder-row">
+              <t-input v-model="newFolderName" placeholder="文件夹名称" size="small" @enter="handleCreateFolder" />
+              <t-button size="small" :loading="createFolderLoading" @click="handleCreateFolder">创建</t-button>
+            </div>
+          </div>
+
           <div class="page-list">
             <div v-if="folderTree.length > 0" class="page-group">
               <div class="group-label">目录</div>
@@ -68,6 +79,9 @@
                 <t-icon name="folder" size="14px" />
                 <span class="folder-name">{{ folder.name }}</span>
                 <span class="folder-count">{{ folder.page_count }}</span>
+                <t-popconfirm content="删除文件夹？其中的页面不会被删除" @confirm="handleDeleteFolder(folder.id)">
+                  <t-icon name="close" size="12px" class="folder-delete" @click.stop />
+                </t-popconfirm>
               </div>
             </div>
 
@@ -184,6 +198,10 @@ const contentLoading = ref(false)
 const building = ref(false)
 const statusInfo = ref<{ page_count: number; pending_count: number } | null>(null)
 let pollTimer: ReturnType<typeof setInterval> | null = null
+
+const newFolderName = ref('')
+const showNewFolder = ref(false)
+const createFolderLoading = ref(false)
 
 const kindLabels: Record<string, string> = {
   index: '索引',
@@ -337,6 +355,34 @@ const startPolling = () => {
   pollTimer = setInterval(fetchStatus, 5000)
 }
 
+const handleCreateFolder = async () => {
+  if (!newFolderName.value.trim() || !kbId.value) return
+  createFolderLoading.value = true
+  try {
+    await createWikiFolder(kbId.value, {
+      name: newFolderName.value.trim(),
+      parent_id: folderFilter.value || undefined,
+    })
+    newFolderName.value = ''
+    showNewFolder.value = false
+    fetchPages()
+  } catch {
+    MessagePlugin.error('创建文件夹失败')
+  } finally {
+    createFolderLoading.value = false
+  }
+}
+
+const handleDeleteFolder = async (folderId: string) => {
+  try {
+    await deleteWikiFolder(kbId.value, folderId)
+    if (folderFilter.value === folderId) folderFilter.value = null
+    fetchPages()
+  } catch {
+    MessagePlugin.error('删除文件夹失败')
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await listKnowledgeBases(1, 100)
@@ -464,6 +510,32 @@ onUnmounted(() => {
 .folder-count {
   font-size: var(--kl-text-xs);
   color: var(--td-text-color-placeholder);
+}
+
+.folder-actions {
+  padding: 0 var(--kl-space-2) var(--kl-space-2);
+}
+
+.new-folder-row {
+  display: flex;
+  gap: var(--kl-space-1);
+  margin-top: var(--kl-space-1);
+}
+
+.folder-delete {
+  opacity: 0;
+  color: var(--td-text-color-placeholder);
+  cursor: pointer;
+  transition: opacity 0.15s;
+  margin-left: var(--kl-space-1);
+}
+
+.folder-item:hover .folder-delete {
+  opacity: 1;
+}
+
+.folder-delete:hover {
+  color: var(--td-error-color);
 }
 
 .status-bar {

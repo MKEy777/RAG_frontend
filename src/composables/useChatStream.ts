@@ -43,6 +43,7 @@ export function useChatStream() {
           query,
           history,
           enable_wiki_boost: session.enableWikiBoost,
+          enable_graph: session.enableGraph,
           session_id: session.serverSessionId ?? null,
         },
         {

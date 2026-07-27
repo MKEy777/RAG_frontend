@@ -9,6 +9,7 @@ export interface Chunk {
   start_at: number | null
   end_at: number | null
   created_at: string | null
+  enabled: boolean
 }
 
 export async function listChunks(
@@ -28,8 +29,8 @@ export async function getDocumentContent(docId: string): Promise<{ doc_id: strin
   return data
 }
 
-export async function updateChunk(docId: string, chunkId: string, content: string): Promise<void> {
-  await client.put(`/documents/${docId}/chunks/${chunkId}`, { content })
+export async function updateChunk(docId: string, chunkId: string, payload: { content?: string; enabled?: boolean }): Promise<void> {
+  await client.put(`/documents/${docId}/chunks/${chunkId}`, payload)
 }
 
 export async function deleteChunk(docId: string, chunkId: string): Promise<void> {

@@ -45,6 +45,13 @@
               />
               <span class="slider-value">{{ formData.top_k }}</span>
             </t-form-item>
+            <t-form-item label="检索模式">
+              <t-radio-group v-model="formData.search_mode" variant="default-filled" size="small">
+                <t-radio value="hybrid">混合</t-radio>
+                <t-radio value="vector">向量</t-radio>
+                <t-radio value="fulltext">全文</t-radio>
+              </t-radio-group>
+            </t-form-item>
             <div class="switch-grid">
               <t-form-item label="图谱增强">
                 <t-switch v-model="formData.enable_graph" size="small" />
@@ -78,7 +85,6 @@
           <template #action>
             <div class="result-actions">
               <t-checkbox v-model="hideGraph" size="small">隐藏图谱切片</t-checkbox>
-              <span v-if="requestId" class="request-id">ID: {{ requestId }}</span>
               <t-tag v-if="displayHits.length > 0" theme="primary" variant="light">
                 共 {{ displayHits.length }} 条结果
               </t-tag>
@@ -148,18 +154,22 @@
     </t-row>
 
     <!-- 测试历史 -->
-    <div v-if="history.length > 0" class="history-section">
+    <div class="history-section">
       <div class="history-title">测试历史</div>
       <div class="history-list">
         <div
-          v-for="(h, i) in history"
-          :key="i"
+          v-for="h in serverHistory"
+          :key="h.id"
           class="history-item"
           @click="formData.query = h.query"
         >
           <span class="history-query">{{ h.query }}</span>
-          <span class="history-meta">{{ h.hitCount }} 条 · {{ h.time }}</span>
+          <div class="history-right">
+            <span class="history-meta">{{ h.hit_count }} 条 · {{ h.duration_ms }}ms · {{ h.created_at }}</span>
+            <t-icon name="delete" class="history-delete" @click.stop="handleDeleteHistory(h.id)" />
+          </div>
         </div>
+        <div v-if="!serverHistory.length && !historyLoading" class="history-empty">暂无测试历史</div>
       </div>
     </div>
 
@@ -209,7 +219,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listKnowledgeBases } from '@/api/knowledgeBase'
-import { retrieve, type RetrievalHit } from '@/api/retrieval'
+import { retrieve, listRetrievalHistory, deleteRetrievalHistory, type RetrievalHit, type RetrievalHistoryItem } from '@/api/retrieval'
 import PageHeader from '@/components/PageHeader.vue'
 import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
 import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
@@ -220,11 +230,11 @@ const kbLoading = ref(false)
 const searching = ref(false)
 const showSettingsDialog = ref(false)
 const hideGraph = ref(false)
-const requestId = ref('')
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const hits = ref<RetrievalHit[]>([])
 const faqHits = ref<RetrievalHit[]>([])
-const history = ref<{ query: string; time: string; hitCount: number }[]>([])
+const serverHistory = ref<RetrievalHistoryItem[]>([])
+const historyLoading = ref(false)
 
 const searchSettings = ref<SearchSettings>({
   strategy: 'hybrid',
@@ -248,6 +258,7 @@ const formData = reactive({
   enable_wiki_boost: false,
   enable_rerank: true,
   expand_parent: true,
+  search_mode: 'hybrid' as 'hybrid' | 'vector' | 'fulltext',
 })
 
 const advParams = reactive({
@@ -275,6 +286,23 @@ watch(() => searchSettings.value.topK, (v) => {
 const canSearch = computed(() => {
   return formData.kb_ids.length > 0 && formData.query.trim().length > 0
 })
+
+const fetchHistory = async () => {
+  historyLoading.value = true
+  try {
+    const res = await listRetrievalHistory(formData.kb_ids[0], 1, 20)
+    serverHistory.value = res.items
+  } catch { /* ignore */ } finally {
+    historyLoading.value = false
+  }
+}
+
+const handleDeleteHistory = async (testId: string) => {
+  try {
+    await deleteRetrievalHistory(testId)
+    fetchHistory()
+  } catch { /* ignore */ }
+}
 
 let lastWikiBoost = 1.3
 
@@ -331,17 +359,12 @@ const handleSearch = async () => {
       enable_wiki_boost: formData.enable_wiki_boost,
       enable_rerank: formData.enable_rerank,
       expand_parent: formData.expand_parent,
+      search_mode: formData.search_mode,
       ...advParams,
     })
     hits.value = res.hits
     faqHits.value = res.faq_hits || []
-    requestId.value = res.request_id || ''
-    history.value.unshift({
-      query: formData.query,
-      time: new Date().toLocaleTimeString(),
-      hitCount: res.hits.length,
-    })
-    if (history.value.length > 20) history.value.pop()
+    fetchHistory()
     if (res.hits.length === 0 && faqHits.value.length === 0) {
       MessagePlugin.info('未找到相关结果')
     }
@@ -358,6 +381,7 @@ onMounted(async () => {
   if (kbId && !formData.kb_ids.includes(kbId)) {
     formData.kb_ids.push(kbId)
   }
+  fetchHistory()
 })
 </script>
 
@@ -571,12 +595,6 @@ onMounted(async () => {
   gap: var(--kl-space-3);
 }
 
-.request-id {
-  font-size: var(--kl-text-xs);
-  color: var(--td-text-color-placeholder);
-  font-family: var(--app-font-family-mono);
-}
-
 .history-section {
   margin-top: var(--kl-space-5);
 }
@@ -624,4 +642,10 @@ onMounted(async () => {
   flex-shrink: 0;
   margin-left: var(--kl-space-3);
 }
+
+.history-right { display: flex; align-items: center; gap: var(--kl-space-2); flex-shrink: 0; }
+.history-delete { color: var(--td-text-color-placeholder); cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+.history-item:hover .history-delete { opacity: 1; }
+.history-delete:hover { color: var(--td-error-color); }
+.history-empty { padding: var(--kl-space-4); text-align: center; color: var(--td-text-color-placeholder); font-size: var(--kl-text-sm); }
 </style>

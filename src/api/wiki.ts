@@ -92,3 +92,26 @@ export async function clearWikiPages(kbId: string): Promise<{ status: string; de
   const { data } = await client.delete(`/wiki/${kbId}/pages`)
   return data
 }
+
+export interface WikiFolder {
+  id: string
+  name: string
+  parent_id: string | null
+}
+
+export async function listWikiFolders(kbId: string): Promise<{ folders: WikiFolder[] }> {
+  const { data } = await client.get(`/wiki/${kbId}/folders`)
+  return data
+}
+
+export async function createWikiFolder(
+  kbId: string,
+  body: { name: string; parent_id?: string }
+): Promise<WikiFolder> {
+  const { data } = await client.post(`/wiki/${kbId}/folders`, body)
+  return data
+}
+
+export async function deleteWikiFolder(kbId: string, folderId: string): Promise<void> {
+  await client.delete(`/wiki/${kbId}/folders/${folderId}`)
+}

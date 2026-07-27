@@ -7,10 +7,12 @@ export interface KnowledgeBase {
   description: string | null
   enable_wiki: boolean
   enable_graph: boolean
-  owner?: string
-  document_count?: number
+  doc_count?: number
   total_size?: number
-  updated_at?: string
+  group_name?: string
+  icon?: string
+  retrieval_config?: Record<string, unknown>
+  chunk_count?: number
 }
 
 export interface KBUpdateParams {
@@ -18,6 +20,9 @@ export interface KBUpdateParams {
   description?: string
   enable_wiki?: boolean
   enable_graph?: boolean
+  group_name?: string
+  icon?: string
+  retrieval_config?: Record<string, unknown>
 }
 
 export interface KBCreateParams {
@@ -29,6 +34,9 @@ export interface KBCreateParams {
   indexing_strategy?: Record<string, unknown>
   enable_wiki?: boolean
   enable_graph?: boolean
+  group_name?: string
+  icon?: string
+  retrieval_config?: Record<string, unknown>
 }
 
 export interface PaginatedResponse<T> {
@@ -70,4 +78,25 @@ export async function updateKnowledgeBase(
 
 export async function deleteKnowledgeBase(id: string): Promise<void> {
   await client.delete(`/knowledge-bases/${id}`)
+}
+
+export interface EmbeddingModel {
+  id: string
+  model: string
+  dims: number
+}
+
+export async function listEmbeddingModels(): Promise<{ models: EmbeddingModel[] }> {
+  const { data } = await client.get('/knowledge-bases/embedding-models')
+  return data
+}
+
+export async function listGroups(): Promise<{ groups: string[] }> {
+  const { data } = await client.get('/knowledge-bases/groups')
+  return data
+}
+
+export async function suggestIcon(kbId: string): Promise<{ icon: string }> {
+  const { data } = await client.post(`/knowledge-bases/${kbId}/icon/suggest`)
+  return data
 }

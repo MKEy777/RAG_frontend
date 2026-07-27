@@ -24,6 +24,7 @@ export interface ChatSession {
   title: string
   kbIds: string[]
   enableWikiBoost: boolean
+  enableGraph: boolean
   createdAt: number
   updatedAt: number
   messages: ChatMessage[]
@@ -66,13 +67,14 @@ export const useChatStore = defineStore('chat', {
     },
   },
   actions: {
-    createSession(kbIds: string[], enableWikiBoost: boolean): ChatSession {
+    createSession(kbIds: string[], enableWikiBoost: boolean, enableGraph = false): ChatSession {
       const now = Date.now()
       const session: ChatSession = {
         id: crypto.randomUUID(),
         title: '新对话',
         kbIds,
         enableWikiBoost,
+        enableGraph,
         createdAt: now,
         updatedAt: now,
         messages: [],
