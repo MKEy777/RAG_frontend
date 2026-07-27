@@ -63,6 +63,13 @@
   --kl-content-max-width: 1200px;
   --kl-chat-max-width: 768px;
   --kl-header-height: 56px;
+  --kl-wiki-sidebar-width: 220px;
+  --kl-wiki-right-width: 280px;
+  --kl-filter-sidebar-width: 220px;
+
+  /* ─── Highlight ─── */
+  --kl-highlight-yellow: #FFF8E1;
+  --kl-highlight-blue: #E3F2FD;
 
   /* ─── Accent（Gemini） ─── */
   --kl-accent: #4285F4;

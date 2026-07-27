@@ -26,28 +26,28 @@
         <t-tag v-if="kb" :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light">
           {{ kb.type === 'document' ? '文档' : 'FAQ' }}
         </t-tag>
-        <t-button variant="outline" @click="router.push(`/knowledge-bases/${kbId}/chunks`)">
-          <template #icon><t-icon name="view-module" /></template>
-          切片检查
-        </t-button>
-        <t-button v-if="kb?.enable_wiki" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
-          <template #icon><t-icon name="book" /></template>
-          Wiki
-        </t-button>
         <t-button v-if="kb?.enable_graph" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/graph`)">
           <template #icon><t-icon name="fork" /></template>
           知识图谱
+          <t-tag theme="danger" variant="light" size="small" style="margin-left: 4px">NEW</t-tag>
         </t-button>
         <t-button variant="outline" @click="openSettings">
           <template #icon><t-icon name="setting" /></template>
-          RAG 配置
+          设置
         </t-button>
-        <t-button variant="outline" @click="urlDialogVisible = true">
-          <template #icon><t-icon name="link" /></template>
-          从 URL 导入
+        <t-button variant="outline" @click="router.push(`/retrieval?kb_id=${kbId}`)">
+          <template #icon><t-icon name="search" /></template>
+          命中测试
+        </t-button>
+        <t-button theme="primary" @click="fileInput?.click()">
+          <template #icon><t-icon name="cloud-upload" /></template>
+          导入文件
         </t-button>
       </template>
     </PageHeader>
+
+    <t-tabs v-model="activeTab" class="detail-tabs">
+      <t-tab-panel value="files" label="知识库文件">
 
     <t-card :bordered="false" class="doc-card">
       <div
@@ -152,6 +152,17 @@
       </t-table>
     </t-card>
 
+      </t-tab-panel>
+      <t-tab-panel value="wiki" label="知识 Wiki">
+        <div class="wiki-tab-placeholder">
+          <t-button variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
+            <template #icon><t-icon name="book" /></template>
+            进入 Wiki 页面
+          </t-button>
+        </div>
+      </t-tab-panel>
+    </t-tabs>
+
     <DocDetailDrawer
       v-model:visible="drawerVisible"
       :doc="drawerDoc"
@@ -172,8 +183,8 @@
 
     <t-dialog
       v-model:visible="settingsVisible"
-      header="RAG 配置"
-      width="480px"
+      header="知识库配置"
+      width="560px"
       :confirm-btn="{ loading: savingSettings }"
       @confirm="saveSettings"
     >
@@ -191,6 +202,10 @@
           <t-switch v-model="settingsForm.enable_graph" />
         </t-form-item>
       </t-form>
+      <div class="settings-search-section">
+        <h4 class="settings-section-title">检索设置</h4>
+        <SearchSettingsForm v-model="searchSettings" />
+      </div>
     </t-dialog>
 
     <t-dialog v-model:visible="urlDialogVisible" header="从 URL 导入" width="480px" :confirm-btn="{ loading: urlImporting }" @confirm="handleImportUrl">
@@ -207,6 +222,8 @@ import type { TableProps, DropdownOption as DropdownItem } from 'tdesign-vue-nex
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DocDetailDrawer from '@/components/DocDetailDrawer.vue'
+import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
+import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
 import { getKnowledgeBase, updateKnowledgeBase, type KnowledgeBase } from '@/api/knowledgeBase'
 import {
   listDocuments,
@@ -224,6 +241,7 @@ import { useDocUpload } from '@/composables/useDocUpload'
 const route = useRoute()
 const router = useRouter()
 const kbId = route.params.id as string
+const activeTab = ref('files')
 
 const kb = ref<KnowledgeBase | null>(null)
 const documents = ref<Document[]>([])
@@ -249,6 +267,14 @@ const settingsForm = reactive({
   description: '',
   enable_wiki: true,
   enable_graph: true,
+})
+const searchSettings = ref<SearchSettings>({
+  strategy: 'hybrid',
+  vectorWeight: 0.7,
+  keywordWeight: 0.3,
+  topK: 10,
+  minScore: 0.5,
+  minScoreEnabled: true,
 })
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
@@ -479,14 +505,14 @@ onMounted(async () => {
 }
 
 .upload-dropzone {
-  border: 2px dashed #E8EAED;
+  border: 2px dashed var(--td-component-stroke);
   border-radius: var(--kl-radius-card);
   padding: var(--kl-space-8);
   text-align: center;
   cursor: pointer;
   transition: all var(--kl-duration-normal) var(--kl-ease-default);
   margin-bottom: var(--kl-space-4);
-  background: #F8F9FA;
+  background: var(--td-gray-color-1);
 }
 
 .upload-dropzone:hover,
@@ -563,5 +589,29 @@ onMounted(async () => {
 .file-name-link:hover {
   color: var(--kl-accent);
   text-decoration: underline;
+}
+
+.detail-tabs {
+  margin-top: var(--kl-space-2);
+}
+
+.wiki-tab-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.settings-search-section {
+  margin-top: var(--kl-space-4);
+  padding-top: var(--kl-space-4);
+  border-top: var(--kl-border-width) solid var(--td-component-stroke);
+}
+
+.settings-section-title {
+  font-size: var(--kl-text-base);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
+  margin: 0 0 var(--kl-space-3);
 }
 </style>

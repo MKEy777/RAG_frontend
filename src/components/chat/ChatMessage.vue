@@ -106,7 +106,7 @@ const handleClick = (e: MouseEvent) => {
 
 .user-bubble {
   max-width: 70%;
-  background: #F0F4F9;
+  background: var(--td-gray-color-3);
   color: var(--td-text-color-primary);
   padding: var(--kl-space-2) var(--kl-space-4);
   border-radius: var(--kl-radius-pill);

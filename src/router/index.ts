@@ -21,10 +21,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '知识库管理' },
       },
       {
+        path: 'knowledge-bases/create',
+        name: 'KbCreate',
+        component: () => import('@/views/KnowledgeBase/CreateView.vue'),
+        meta: { title: '新建知识库' },
+      },
+      {
         path: 'knowledge-bases/:id',
         name: 'KnowledgeBaseDetail',
         component: () => import('@/views/KnowledgeBase/DetailView.vue'),
         meta: { title: '知识库详情' },
+      },
+      {
+        path: 'knowledge-bases/:id/import-wizard',
+        name: 'ImportWizard',
+        component: () => import('@/views/KnowledgeBase/ImportWizard.vue'),
+        meta: { title: '文件配置' },
       },
       {
         path: 'knowledge-bases/:id/documents',

@@ -21,6 +21,7 @@
                   v-model="formData.query"
                   placeholder="请输入查询内容"
                   :autosize="{ minRows: 1, maxRows: 5 }"
+                  :maxlength="500"
                 />
                 <t-button
                   theme="primary"
@@ -33,6 +34,7 @@
                   <template #icon><t-icon name="search" /></template>
                 </t-button>
               </div>
+              <span class="query-count">{{ formData.query.length }}/500</span>
             </t-form-item>
             <t-form-item label="Top K">
               <t-slider
@@ -74,9 +76,13 @@
       <t-col v-if="searching || hits.length > 0 || faqHits.length > 0" :span="8">
         <t-card title="检索结果" :bordered="false">
           <template #action>
-            <t-tag v-if="hits.length > 0" theme="primary" variant="light">
-              共 {{ hits.length }} 条结果
-            </t-tag>
+            <div class="result-actions">
+              <t-checkbox v-model="hideGraph" size="small">隐藏图谱切片</t-checkbox>
+              <span v-if="requestId" class="request-id">ID: {{ requestId }}</span>
+              <t-tag v-if="displayHits.length > 0" theme="primary" variant="light">
+                共 {{ displayHits.length }} 条结果
+              </t-tag>
+            </div>
           </template>
 
           <t-loading :loading="searching">
@@ -107,7 +113,7 @@
               </template>
 
               <t-card
-                v-for="(hit, index) in hits"
+                v-for="(hit, index) in displayHits"
                 :key="hit.chunk_id"
                 :bordered="true"
                 class="hit-card"
@@ -141,58 +147,98 @@
       </t-col>
     </t-row>
 
-    <div class="adv-toggle" @click="showAdvParams = !showAdvParams">
-      <t-icon :name="showAdvParams ? 'chevron-down' : 'chevron-right'" size="14px" />
-      <span>高级参数（调试用）</span>
-      <t-button v-if="showAdvParams" variant="text" size="small" theme="default" @click.stop="resetAdvParams">
-        <template #icon><t-icon name="refresh" /></template>
-        恢复默认
-      </t-button>
-    </div>
-    <div v-show="showAdvParams" class="adv-card">
-      <div class="formula-bar">
-        <div class="formula-line">
-          <span>score =</span>
-          <t-input-number v-model="advParams.vector_weight" :min="0" :max="1" :step="0.05" :decimal-places="2" size="small" theme="column" class="f-input" />
-          <span>× Embedding +</span>
-          <t-input-number v-model="advParams.keyword_weight" :min="0" :max="1" :step="0.05" :decimal-places="2" size="small" theme="column" class="f-input" />
-          <span>× BM25，RRF = 1/(</span>
-          <t-input-number v-model="advParams.rrf_k" :min="1" :max="1000" size="small" theme="column" class="f-input" />
-          <span>+ rank)</span>
-          <span class="f-note">k 越大排名差异越小</span>
+    <!-- 测试历史 -->
+    <div v-if="history.length > 0" class="history-section">
+      <div class="history-title">测试历史</div>
+      <div class="history-list">
+        <div
+          v-for="(h, i) in history"
+          :key="i"
+          class="history-item"
+          @click="formData.query = h.query"
+        >
+          <span class="history-query">{{ h.query }}</span>
+          <span class="history-meta">{{ h.hitCount }} 条 · {{ h.time }}</span>
         </div>
       </div>
-      <div class="params-row">
-        <t-form-item label="召回数" help="每通道检索量">
-          <t-input-number v-model="advParams.recall_top_k" :min="10" :max="200" :step="10" size="small" theme="column" />
-        </t-form-item>
-        <t-form-item label="Embedding 阈值" help="过滤低分向量">
-          <t-input-number v-model="advParams.vector_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
-        </t-form-item>
-        <t-form-item label="BM25 阈值" help="过滤低分关键词">
-          <t-input-number v-model="advParams.keyword_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
-        </t-form-item>
-        <t-form-item label="Reranker 阈值" help="丢弃低分结果">
-          <t-input-number v-model="advParams.rerank_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
-        </t-form-item>
-      </div>
     </div>
+
+    <div class="adv-toggle" @click="showSettingsDialog = true">
+      <t-icon name="setting" size="14px" />
+      <span>高级参数（调试用）</span>
+    </div>
+
+    <t-dialog
+      v-model:visible="showSettingsDialog"
+      header="检索参数配置"
+      width="560px"
+      :confirm-btn="{ content: '确定' }"
+      @confirm="showSettingsDialog = false"
+    >
+      <SearchSettingsForm v-model="searchSettings" />
+      <div class="adv-extra-params">
+        <div class="formula-bar">
+          <div class="formula-line">
+            <span>RRF = 1/(</span>
+            <t-input-number v-model="advParams.rrf_k" :min="1" :max="1000" size="small" theme="column" class="f-input" />
+            <span>+ rank)</span>
+            <span class="f-note">k 越大排名差异越小</span>
+          </div>
+        </div>
+        <div class="params-row">
+          <t-form-item label="召回数" help="每通道检索量">
+            <t-input-number v-model="advParams.recall_top_k" :min="10" :max="200" :step="10" size="small" theme="column" />
+          </t-form-item>
+          <t-form-item label="Embedding 阈值" help="过滤低分向量">
+            <t-input-number v-model="advParams.vector_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+          </t-form-item>
+          <t-form-item label="BM25 阈值" help="过滤低分关键词">
+            <t-input-number v-model="advParams.keyword_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+          </t-form-item>
+          <t-form-item label="Reranker 阈值" help="丢弃低分结果">
+            <t-input-number v-model="advParams.rerank_threshold" :min="0" :max="1" :step="0.01" :decimal-places="2" size="small" theme="column" />
+          </t-form-item>
+        </div>
+      </div>
+    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { MessagePlugin } from 'tdesign-vue-next'
 import { listKnowledgeBases } from '@/api/knowledgeBase'
 import { retrieve, type RetrievalHit } from '@/api/retrieval'
 import PageHeader from '@/components/PageHeader.vue'
+import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
+import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
+
+const route = useRoute()
 
 const kbLoading = ref(false)
 const searching = ref(false)
-const showAdvParams = ref(true)
+const showSettingsDialog = ref(false)
+const hideGraph = ref(false)
+const requestId = ref('')
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const hits = ref<RetrievalHit[]>([])
 const faqHits = ref<RetrievalHit[]>([])
+const history = ref<{ query: string; time: string; hitCount: number }[]>([])
+
+const searchSettings = ref<SearchSettings>({
+  strategy: 'hybrid',
+  vectorWeight: 0.7,
+  keywordWeight: 0.3,
+  topK: 10,
+  minScore: 0.5,
+  minScoreEnabled: true,
+})
+
+const displayHits = computed(() => {
+  if (!hideGraph.value) return hits.value
+  return hits.value.filter((h) => h.channel !== 'graph')
+})
 
 const formData = reactive({
   kb_ids: [] as string[],
@@ -217,30 +263,20 @@ const advParams = reactive({
 
 const DEFAULT_ADV = { ...advParams }
 
-const resetAdvParams = () => {
-  Object.assign(advParams, DEFAULT_ADV)
-}
+watch(() => searchSettings.value.vectorWeight, (v) => {
+  advParams.vector_weight = v
+  advParams.keyword_weight = Math.round((1 - v) * 100) / 100
+})
+
+watch(() => searchSettings.value.topK, (v) => {
+  formData.top_k = v
+})
 
 const canSearch = computed(() => {
   return formData.kb_ids.length > 0 && formData.query.trim().length > 0
 })
 
 let lastWikiBoost = 1.3
-let weightLock = false
-
-watch(() => advParams.vector_weight, (v) => {
-  if (weightLock) return
-  weightLock = true
-  advParams.keyword_weight = Math.round((1 - v) * 100) / 100
-  weightLock = false
-})
-
-watch(() => advParams.keyword_weight, (v) => {
-  if (weightLock) return
-  weightLock = true
-  advParams.vector_weight = Math.round((1 - v) * 100) / 100
-  weightLock = false
-})
 
 watch(() => formData.enable_wiki_boost, (on) => {
   if (on) {
@@ -299,6 +335,13 @@ const handleSearch = async () => {
     })
     hits.value = res.hits
     faqHits.value = res.faq_hits || []
+    requestId.value = res.request_id || ''
+    history.value.unshift({
+      query: formData.query,
+      time: new Date().toLocaleTimeString(),
+      hitCount: res.hits.length,
+    })
+    if (history.value.length > 20) history.value.pop()
     if (res.hits.length === 0 && faqHits.value.length === 0) {
       MessagePlugin.info('未找到相关结果')
     }
@@ -309,7 +352,13 @@ const handleSearch = async () => {
   }
 }
 
-onMounted(fetchKbOptions)
+onMounted(async () => {
+  await fetchKbOptions()
+  const kbId = route.query.kb_id as string
+  if (kbId && !formData.kb_ids.includes(kbId)) {
+    formData.kb_ids.push(kbId)
+  }
+})
 </script>
 
 <style scoped>
@@ -400,16 +449,10 @@ onMounted(fetchKbOptions)
   background: var(--td-gray-color-2);
 }
 
-.adv-card {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--kl-space-4) var(--kl-space-5);
-  margin-top: var(--kl-space-1);
-  padding: var(--kl-space-2) var(--kl-space-4);
-  background: #F8F9FA;
-  border: none;
-  border-radius: var(--kl-radius-card);
-  box-shadow: var(--kl-elevation-1);
+.adv-extra-params {
+  margin-top: var(--kl-space-4);
+  padding-top: var(--kl-space-4);
+  border-top: var(--kl-border-width) solid var(--td-component-stroke);
 }
 
 .params-row {
@@ -470,7 +513,7 @@ onMounted(fetchKbOptions)
 }
 
 .hit-card {
-  border: 1px solid #E8EAED;
+  border: 1px solid var(--td-component-stroke);
   border-radius: var(--kl-radius-card);
 }
 
@@ -512,5 +555,73 @@ onMounted(fetchKbOptions)
   border-radius: var(--kl-radius-md);
   max-height: 300px;
   overflow: auto;
+}
+
+.query-count {
+  display: block;
+  text-align: right;
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
+  margin-top: var(--kl-space-1);
+}
+
+.result-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--kl-space-3);
+}
+
+.request-id {
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
+  font-family: var(--app-font-family-mono);
+}
+
+.history-section {
+  margin-top: var(--kl-space-5);
+}
+
+.history-title {
+  font-size: var(--kl-text-sm);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
+  margin-bottom: var(--kl-space-2);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kl-space-1);
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--kl-space-2) var(--kl-space-3);
+  border-radius: var(--kl-radius-md);
+  cursor: pointer;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
+}
+
+.history-item:hover {
+  background: var(--td-gray-color-2);
+}
+
+.history-query {
+  font-size: var(--kl-text-sm);
+  color: var(--td-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-meta {
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
+  flex-shrink: 0;
+  margin-left: var(--kl-space-3);
 }
 </style>

@@ -7,6 +7,10 @@ export interface KnowledgeBase {
   description: string | null
   enable_wiki: boolean
   enable_graph: boolean
+  owner?: string
+  document_count?: number
+  total_size?: number
+  updated_at?: string
 }
 
 export interface KBUpdateParams {

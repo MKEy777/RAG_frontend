@@ -105,22 +105,29 @@
           切块列表
           <t-tag variant="light" size="small">共 {{ pagination.total }}</t-tag>
         </div>
+        <div class="chunk-search">
+          <t-input v-model="chunkFilter" placeholder="搜索切片内容" size="small" clearable>
+            <template #prefix-icon><t-icon name="search" size="14px" /></template>
+          </t-input>
+        </div>
         <div class="pane-body">
           <t-loading :loading="loading" style="min-height: 200px">
-            <t-empty v-if="!loading && chunks.length === 0" description="暂无切块" />
+            <t-empty v-if="!loading && filteredChunks.length === 0" description="暂无切块" />
             <div v-else class="chunk-list">
               <div
-                v-for="c in chunks"
+                v-for="(c, idx) in filteredChunks"
                 :key="c.id"
                 class="chunk-item"
                 :class="{ active: selected?.id === c.id }"
                 @click="selectChunk(c)"
               >
                 <div class="chunk-meta">
+                  <span class="chunk-index">#{{ idx + 1 }}</span>
                   <t-tag :theme="getTypeTheme(c.chunk_type)" variant="light" size="small">
                     {{ getTypeText(c.chunk_type) }}
                   </t-tag>
-                  <span class="chunk-pos">{{ c.start_at ?? '-' }} – {{ c.end_at ?? '-' }}</span>
+                  <span class="chunk-chars">{{ c.content.length }} 字</span>
+                  <t-tag theme="success" variant="light" size="small">已启用</t-tag>
                   <span
                     v-if="c.parent_chunk_id"
                     class="chunk-parent"
@@ -191,7 +198,14 @@ const sourceLoading = ref(false)
 const sourceContent = ref('')
 const selected = ref<Chunk | null>(null)
 const chunkTypeFilter = ref<string | undefined>('text')
+const chunkFilter = ref('')
 const hlMark = ref<HTMLElement | null>(null)
+
+const filteredChunks = computed(() => {
+  if (!chunkFilter.value.trim()) return chunks.value
+  const q = chunkFilter.value.toLowerCase()
+  return chunks.value.filter((c) => c.content.toLowerCase().includes(q))
+})
 
 const typeOptions = [
   { label: '全部类型', value: '' },
@@ -395,7 +409,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background: var(--td-bg-color-container);
-  border: 1px solid #E8EAED;
+  border: 1px solid var(--td-component-stroke);
   border-radius: var(--kl-radius-card);
 }
 
@@ -566,10 +580,26 @@ onMounted(async () => {
 }
 
 .hl-mark {
-  background: color-mix(in srgb, var(--td-brand-color) 18%, transparent);
+  background: var(--kl-highlight-yellow);
   color: inherit;
   border-radius: var(--kl-radius-sm);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--td-brand-color) 18%, transparent);
+  box-shadow: 0 0 0 2px var(--kl-highlight-yellow);
+}
+
+.chunk-search {
+  padding: var(--kl-space-2) var(--kl-space-3);
+  border-bottom: var(--kl-border-width) solid var(--td-component-stroke);
+}
+
+.chunk-index {
+  font-weight: var(--kl-weight-semibold);
+  color: var(--kl-accent);
+  font-size: var(--kl-text-xs);
+}
+
+.chunk-chars {
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
 }
 
 .chunk-list {
@@ -580,7 +610,7 @@ onMounted(async () => {
 
 .chunk-item {
   padding: var(--kl-space-2) var(--kl-space-3);
-  border: 1px solid #E8EAED;
+  border: 1px solid var(--td-component-stroke);
   border-radius: var(--kl-radius-lg);
   cursor: pointer;
   transition: all var(--kl-duration-fast) var(--kl-ease-default);

@@ -94,7 +94,7 @@
         </div>
       </t-col>
 
-      <t-col :span="9">
+      <t-col :span="7">
         <div class="wiki-content-panel">
           <template v-if="!selected">
             <div class="empty-hint">
@@ -111,6 +111,35 @@
               <div class="wiki-content" v-html="renderedContent" @click="handleContentClick" />
             </t-loading>
           </template>
+        </div>
+      </t-col>
+
+      <t-col :span="2">
+        <div class="wiki-right-panel">
+          <div class="right-section">
+            <div class="right-title">关系图谱</div>
+            <div v-if="selected" class="right-links">
+              <div
+                v-for="link in (selected.out_links || []).slice(0, 10)"
+                :key="link"
+                class="right-link-item"
+                @click="navigateToSlug(link)"
+              >{{ link }}</div>
+              <p v-if="!(selected.out_links || []).length" class="right-empty">暂无关联</p>
+            </div>
+            <p v-else class="right-empty">选择页面查看关联</p>
+          </div>
+          <div class="right-section">
+            <div class="right-title">反馈</div>
+            <div class="feedback-actions">
+              <t-button size="small" variant="outline" shape="square">
+                <t-icon name="thumb-up" />
+              </t-button>
+              <t-button size="small" variant="outline" shape="square">
+                <t-icon name="thumb-down" />
+              </t-button>
+            </div>
+          </div>
         </div>
       </t-col>
     </t-row>
@@ -213,6 +242,10 @@ const handleContentClick = (e: MouseEvent) => {
   const el = (e.target as HTMLElement).closest('[data-wiki-slug]')
   if (!el) return
   const slug = el.getAttribute('data-wiki-slug') || ''
+  navigateToSlug(slug)
+}
+
+const navigateToSlug = (slug: string) => {
   const page = pages.value.find((p) => p.slug === slug)
   if (page) selectPage(page)
   else MessagePlugin.warning(`页面不存在: ${slug}`)
@@ -532,5 +565,58 @@ onUnmounted(() => {
 
 .wiki-content :deep(a.wiki-link:hover) {
   background: var(--td-brand-color-light);
+}
+
+.wiki-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kl-space-4);
+  padding-left: var(--kl-space-3);
+  border-left: var(--kl-border-width) solid var(--td-component-stroke);
+}
+
+.right-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kl-space-2);
+}
+
+.right-title {
+  font-size: var(--kl-text-sm);
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-text-color-primary);
+}
+
+.right-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--kl-space-1);
+}
+
+.right-link-item {
+  font-size: var(--kl-text-xs);
+  color: var(--kl-accent);
+  cursor: pointer;
+  padding: var(--kl-space-1) var(--kl-space-2);
+  border-radius: var(--kl-radius-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--kl-duration-fast) var(--kl-ease-default);
+}
+
+.right-link-item:hover {
+  background: var(--kl-accent-light);
+}
+
+.right-empty {
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
+  margin: 0;
+}
+
+.feedback-actions {
+  display: flex;
+  gap: var(--kl-space-2);
 }
 </style>
