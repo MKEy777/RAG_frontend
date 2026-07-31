@@ -67,6 +67,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+
 export interface SearchSettings {
   strategy: 'hybrid' | 'vector' | 'fulltext'
   vectorWeight: number
@@ -79,7 +81,7 @@ export interface SearchSettings {
 const props = defineProps<{ modelValue: SearchSettings }>()
 const emit = defineEmits<{ 'update:modelValue': [value: SearchSettings] }>()
 
-const model = props.modelValue
+const model = computed(() => props.modelValue)
 
 const strategies = [
   {
@@ -103,12 +105,12 @@ const strategies = [
 ]
 
 const update = (key: keyof SearchSettings, value: unknown) => {
-  emit('update:modelValue', { ...model, [key]: value })
+  emit('update:modelValue', { ...model.value, [key]: value })
 }
 
 const handleWeightChange = (v: number) => {
   const vw = v / 100
-  emit('update:modelValue', { ...model, vectorWeight: vw, keywordWeight: Math.round((1 - vw) * 100) / 100 })
+  emit('update:modelValue', { ...model.value, vectorWeight: vw, keywordWeight: Math.round((1 - vw) * 100) / 100 })
 }
 </script>
 

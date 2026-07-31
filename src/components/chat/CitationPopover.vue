@@ -21,7 +21,10 @@ const router = useRouter()
 const openChunk = async () => {
   try {
     const doc = await getDocument(props.reference.document_id)
-    router.push(`/knowledge-bases/${doc.knowledge_base_id}/documents/${doc.id}/chunks`)
+    router.push({
+      path: `/knowledge-bases/${doc.knowledge_base_id}/documents/${doc.id}/chunks`,
+      query: { from: 'chat', chunk_id: props.reference.chunk_id },
+    })
   } catch {
     // client 拦截器已弹错
   }

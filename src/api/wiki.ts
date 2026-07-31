@@ -24,6 +24,10 @@ export interface WikiPageDetail extends WikiPageSummary {
 export interface WikiStatus {
   page_count: number
   pending_count: number
+  total_operations: number
+  completed_operations: number
+  building: boolean
+  last_updated: string | null
 }
 
 export interface WikiIndexFolder {
@@ -39,10 +43,23 @@ export interface WikiIndexGroup {
   items: { slug: string; title: string; summary: string; folder_id: string | null }[]
 }
 
+export interface WikiGraphNode {
+  id: string
+  name: string
+  kind: string
+}
+
+export interface WikiGraphEdge {
+  source: string
+  target: string
+}
+
 export interface WikiIndexPayload {
   intro: string
+  overview: string
   groups: WikiIndexGroup[]
   folders: WikiIndexFolder[]
+  graph: { nodes: WikiGraphNode[]; edges: WikiGraphEdge[] }
 }
 
 export async function listWikiPages(
@@ -76,6 +93,25 @@ export async function getWikiStatus(kbId: string): Promise<WikiStatus> {
 
 export async function getWikiIndex(kbId: string): Promise<WikiIndexPayload> {
   const { data } = await client.get(`/wiki/${kbId}/index`)
+  return data
+}
+
+export interface WikiFaqQuestion {
+  id: string
+  question: string
+  source_chunk_id: string | null
+}
+
+export interface WikiFaqGroup {
+  knowledge_id: string
+  title: string
+  questions: WikiFaqQuestion[]
+}
+
+export async function listWikiFaq(
+  kbId: string
+): Promise<{ groups: WikiFaqGroup[]; total: number }> {
+  const { data } = await client.get(`/wiki/${kbId}/faq`)
   return data
 }
 

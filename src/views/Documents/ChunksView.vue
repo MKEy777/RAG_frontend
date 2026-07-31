@@ -3,7 +3,7 @@
     <PageHeader
       :title="kbMode ? '切片检查' : '切片详情'"
       :subtitle="docTitle"
-      :back-to="`/knowledge-bases/${kbId}`"
+      :back-to="backTo"
     >
       <template #actions>
         <t-select
@@ -185,6 +185,11 @@ const kbId = route.params.id as string
 const routeDocId = (route.params.docId as string) || ''
 const kbMode = !routeDocId
 
+// 从聊天参考来源跳入时携带 from=chat 与 chunk_id
+const fromChat = route.query.from === 'chat'
+const targetChunkId = (route.query.chunk_id as string) || ''
+const backTo = fromChat ? '/chat' : `/knowledge-bases/${kbId}`
+
 const filesCollapsed = ref(false)
 const flyoutVisible = ref(false)
 const hoveredDocId = ref('')
@@ -197,7 +202,7 @@ const loading = ref(false)
 const sourceLoading = ref(false)
 const sourceContent = ref('')
 const selected = ref<Chunk | null>(null)
-const chunkTypeFilter = ref<string | undefined>('text')
+const chunkTypeFilter = ref<string | undefined>(targetChunkId ? '' : 'text')
 const chunkFilter = ref('')
 const hlMark = ref<HTMLElement | null>(null)
 
@@ -281,7 +286,7 @@ const loadDoc = () => {
   pagination.current = 1
   pagination.total = 0
   fetchSource()
-  fetchChunks()
+  if (!targetChunkId) fetchChunks()
 }
 
 const selectDoc = (d: Document) => {
@@ -304,6 +309,32 @@ const jumpToParent = (parentId: string) => {
   } else {
     MessagePlugin.warning('父块不在当前页，请切换分页或筛选“父块”类型查看')
   }
+}
+
+// 从聊天跳入时逐页查找目标切片并定位高亮
+const locateTargetChunk = async () => {
+  if (!targetChunkId || !activeDocId.value) return
+  const size = 100
+  let page = 1
+  let total = Infinity
+  while ((page - 1) * size < total) {
+    const res = await listChunks(activeDocId.value, page, size, chunkTypeFilter.value)
+    total = res.total
+    const hit = res.items.find((c) => c.id === targetChunkId)
+    if (hit) {
+      pagination.pageSize = size
+      pagination.current = page
+      chunks.value = res.items
+      pagination.total = total
+      await nextTick()
+      selectChunk(hit)
+      const el = document.querySelector('.chunk-item.active')
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return
+    }
+    page += 1
+  }
+  MessagePlugin.warning('未找到对应切片，可能已被删除')
 }
 
 const handlePageChange = (pageInfo: { current: number; pageSize: number }) => {
@@ -384,6 +415,7 @@ onMounted(async () => {
       // ignore
     }
     loadDoc()
+    if (targetChunkId) locateTargetChunk()
   }
 })
 </script>

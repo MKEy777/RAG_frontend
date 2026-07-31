@@ -34,6 +34,13 @@
       style="margin-bottom: 16px"
     />
 
+    <t-alert v-if="focusKnowledgeId" theme="info" style="margin-bottom: 16px">
+      <template #message>
+        仅高亮当前文档抽取出的实体与关系，其余已淡化
+        <t-link theme="primary" hover="color" style="margin-left: 8px" @click="clearFocus">显示全部</t-link>
+      </template>
+    </t-alert>
+
     <t-empty
       v-if="!loading && (!graphData || graphData.nodes.length === 0)"
       description="暂无图谱数据，请先上传并解析文档"
@@ -64,6 +71,7 @@ echarts.use([GraphChart, CanvasRenderer, TooltipComponent, LegendComponent])
 
 const route = useRoute()
 const kbId = ref((route.params.id as string) || '')
+const focusKnowledgeId = ref((route.query.knowledge_id as string) || '')
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const kbList = ref<KnowledgeBase[]>([])
 
@@ -95,7 +103,7 @@ const fetchGraph = async () => {
   if (!kbId.value) return
   loading.value = true
   try {
-    graphData.value = await getGraph(kbId.value, 300)
+    graphData.value = await getGraph(kbId.value, 300, focusKnowledgeId.value || undefined)
     if (graphData.value.nodes.length > 0) {
       await nextTick()
       renderChart()
@@ -105,6 +113,11 @@ const fetchGraph = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const clearFocus = () => {
+  focusKnowledgeId.value = ''
+  fetchGraph()
 }
 
 const handleRebuild = async () => {
@@ -118,7 +131,7 @@ const handleRebuild = async () => {
     let stable = 0
     for (let i = 0; i < 60; i++) {
       await new Promise((r) => setTimeout(r, 5000))
-      const data = await getGraph(kbId.value, 300)
+      const data = await getGraph(kbId.value, 300, focusKnowledgeId.value || undefined)
       if (data.stats.total_entities === last && last > 0) {
         stable++
         if (stable >= 2) break
@@ -200,6 +213,8 @@ const renderChart = () => {
           description: n.description,
           frequency: n.frequency,
           degree: n.degree,
+          itemStyle: n.belongs === false ? { opacity: 0.15 } : undefined,
+          label: n.belongs === false ? { show: false } : undefined,
         })),
         links: graphData.value.edges.map((e) => ({
           source: e.source,
@@ -207,6 +222,7 @@ const renderChart = () => {
           value: e.weight,
           lineStyle: {
             width: Math.max(1, Math.min(4, e.weight)),
+            opacity: e.belongs === false ? 0.08 : undefined,
           },
         })),
         categories,
@@ -229,6 +245,18 @@ const renderChart = () => {
 
   chart = echarts.init(chartContainer.value)
   chart.setOption(option)
+}
+
+const focusNode = () => {
+  const name = route.query.focus as string
+  if (!name || !chart || !graphData.value) return
+  const idx = graphData.value.nodes.findIndex((n) => n.name === name)
+  if (idx < 0) {
+    MessagePlugin.warning(`图谱中未找到实体: ${name}`)
+    return
+  }
+  chart.dispatchAction({ type: 'highlight', seriesIndex: 0, dataIndex: idx })
+  chart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: idx })
 }
 
 const handleResize = () => chart?.resize()

@@ -23,13 +23,14 @@
       back-to="/knowledge-bases"
     >
       <template #actions>
-        <t-tag v-if="kb" :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light">
-          {{ kb.type === 'document' ? '文档' : 'FAQ' }}
-        </t-tag>
         <t-button v-if="kb?.enable_graph" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/graph`)">
           <template #icon><t-icon name="fork" /></template>
           知识图谱
           <t-tag theme="danger" variant="light" size="small" style="margin-left: 4px">NEW</t-tag>
+        </t-button>
+        <t-button v-if="kb?.enable_wiki" variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
+          <template #icon><t-icon name="book" /></template>
+          知识 Wiki
         </t-button>
         <t-button size="small" variant="outline" :loading="suggestIconLoading" @click="handleSuggestIcon">
           AI 图标
@@ -42,15 +43,8 @@
           <template #icon><t-icon name="search" /></template>
           命中测试
         </t-button>
-        <t-button theme="primary" @click="fileInput?.click()">
-          <template #icon><t-icon name="cloud-upload" /></template>
-          导入文件
-        </t-button>
       </template>
     </PageHeader>
-
-    <t-tabs v-model="activeTab" class="detail-tabs">
-      <t-tab-panel value="files" label="知识库文件">
 
     <t-card :bordered="false" class="doc-card">
       <div
@@ -194,17 +188,6 @@
       </t-table>
     </t-card>
 
-      </t-tab-panel>
-      <t-tab-panel value="wiki" label="知识 Wiki">
-        <div class="wiki-tab-placeholder">
-          <t-button variant="outline" @click="router.push(`/knowledge-bases/${kbId}/wiki`)">
-            <template #icon><t-icon name="book" /></template>
-            进入 Wiki 页面
-          </t-button>
-        </div>
-      </t-tab-panel>
-    </t-tabs>
-
     <DocDetailDrawer
       v-model:visible="drawerVisible"
       :doc="drawerDoc"
@@ -223,32 +206,6 @@
       <t-input v-model="renameValue" placeholder="输入新名称" @enter="confirmRename" />
     </t-dialog>
 
-    <t-dialog
-      v-model:visible="settingsVisible"
-      header="知识库配置"
-      width="560px"
-      :confirm-btn="{ loading: savingSettings }"
-      @confirm="saveSettings"
-    >
-      <t-form :label-width="90">
-        <t-form-item label="名称">
-          <t-input v-model="settingsForm.name" />
-        </t-form-item>
-        <t-form-item label="描述">
-          <t-textarea v-model="settingsForm.description" :autosize="{ minRows: 2, maxRows: 4 }" />
-        </t-form-item>
-        <t-form-item label="Wiki" help="文档解析后自动生成百科页面，并为切片生成 FAQ 问句提升召回">
-          <t-switch v-model="settingsForm.enable_wiki" />
-        </t-form-item>
-        <t-form-item label="知识图谱" help="抽取实体关系构建图谱，检索可图谱增强">
-          <t-switch v-model="settingsForm.enable_graph" />
-        </t-form-item>
-      </t-form>
-      <div class="settings-search-section">
-        <h4 class="settings-section-title">检索设置</h4>
-        <SearchSettingsForm v-model="searchSettings" />
-      </div>
-    </t-dialog>
 
     <t-dialog v-model:visible="urlDialogVisible" header="从 URL 导入" width="480px" :confirm-btn="{ loading: urlImporting }" @confirm="handleImportUrl">
       <t-input v-model="importUrlValue" placeholder="https://..." />
@@ -287,8 +244,6 @@ import type { TableProps, DropdownOption as DropdownItem } from 'tdesign-vue-nex
 import PageHeader from '@/components/PageHeader.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DocDetailDrawer from '@/components/DocDetailDrawer.vue'
-import SearchSettingsForm from '@/components/SearchSettingsForm.vue'
-import type { SearchSettings } from '@/components/SearchSettingsForm.vue'
 import { getKnowledgeBase, updateKnowledgeBase, suggestIcon, type KnowledgeBase } from '@/api/knowledgeBase'
 import {
   listDocuments,
@@ -308,7 +263,6 @@ import { useDocUpload } from '@/composables/useDocUpload'
 const route = useRoute()
 const router = useRouter()
 const kbId = route.params.id as string
-const activeTab = ref('files')
 
 const kb = ref<KnowledgeBase | null>(null)
 const documents = ref<Document[]>([])
@@ -348,22 +302,7 @@ const handleSuggestIcon = async () => {
   }
 }
 
-const settingsVisible = ref(false)
-const savingSettings = ref(false)
-const settingsForm = reactive({
-  name: '',
-  description: '',
-  enable_wiki: true,
-  enable_graph: true,
-})
-const searchSettings = ref<SearchSettings>({
-  strategy: 'hybrid',
-  vectorWeight: 0.7,
-  keywordWeight: 0.3,
-  topK: 10,
-  minScore: 0.5,
-  minScoreEnabled: true,
-})
+
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 
@@ -595,26 +534,7 @@ const handleBatchReparse = async () => {
 }
 
 const openSettings = () => {
-  if (!kb.value) return
-  settingsForm.name = kb.value.name
-  settingsForm.description = kb.value.description || ''
-  settingsForm.enable_wiki = kb.value.enable_wiki
-  settingsForm.enable_graph = kb.value.enable_graph
-  settingsVisible.value = true
-}
-
-const saveSettings = async () => {
-  if (savingSettings.value) return
-  savingSettings.value = true
-  try {
-    kb.value = await updateKnowledgeBase(kbId, { ...settingsForm })
-    MessagePlugin.success('配置已保存')
-    settingsVisible.value = false
-  } catch {
-    // client 拦截器已弹错
-  } finally {
-    savingSettings.value = false
-  }
+  router.push(`/knowledge-bases/${kbId}/settings`)
 }
 
 onMounted(async () => {
@@ -753,16 +673,14 @@ onMounted(async () => {
   min-height: 200px;
 }
 
-.settings-search-section {
-  margin-top: var(--kl-space-4);
-  padding-top: var(--kl-space-4);
-  border-top: var(--kl-border-width) solid var(--td-component-stroke);
+.detail-tabs {
+  margin-top: var(--kl-space-2);
 }
 
-.settings-section-title {
-  font-size: var(--kl-text-base);
-  font-weight: var(--kl-weight-semibold);
-  color: var(--td-text-color-primary);
-  margin: 0 0 var(--kl-space-3);
+.wiki-tab-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
 }
 </style>

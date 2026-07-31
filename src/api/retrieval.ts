@@ -32,7 +32,6 @@ export interface RetrievalHit {
 
 export interface RetrievalResponse {
   hits: RetrievalHit[]
-  faq_hits: RetrievalHit[]
 }
 
 export async function retrieve(

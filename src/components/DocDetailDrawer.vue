@@ -34,6 +34,11 @@
             </t-tag>
           </t-descriptions-item>
         </t-descriptions>
+        <div v-if="doc?.graph_status === 'completed'" class="info-actions">
+          <t-button theme="primary" variant="outline" size="small" @click="gotoGraph">
+            在图谱中查看本文档实体
+          </t-button>
+        </div>
       </t-tab-panel>
 
       <t-tab-panel value="progress" label="解析进度">
@@ -250,6 +255,12 @@ const gotoChunksPage = () => {
   router.push(`/knowledge-bases/${props.kbId}/documents/${props.doc.id}/chunks`)
 }
 
+const gotoGraph = () => {
+  if (!props.doc) return
+  emit('update:visible', false)
+  router.push(`/knowledge-bases/${props.kbId}/graph?knowledge_id=${props.doc.id}`)
+}
+
 // 召回测试
 const recallQuery = ref('')
 const recallHits = ref<RetrievalHit[]>([])
@@ -301,6 +312,11 @@ onUnmounted(stopPolling)
 <style scoped>
 .tab-body {
   padding: 16px 4px;
+}
+
+.info-actions {
+  margin-top: 12px;
+  padding: 0 4px;
 }
 
 .mono {

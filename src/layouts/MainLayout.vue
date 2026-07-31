@@ -20,7 +20,7 @@
           :key="item.path"
           :to="item.path"
           class="nav-item"
-          :class="{ active: isActive(item.path) }"
+          :class="{ active: isActive(item.path), 'nav-sub': item.indent }"
           :data-label="item.label"
           @click="item.path === '/chat' && (chatStore.activeId = '')"
         >
@@ -67,8 +67,9 @@ const sidebarCollapsed = ref(false)
 const navItems = [
   { path: '/chat', icon: 'edit-1', label: '新聊天' },
   { path: '/knowledge-bases', icon: 'server', label: '知识库' },
+  { path: '/wiki', icon: 'book', label: '知识 Wiki', indent: true },
+  { path: '/graph', icon: 'relation', label: '知识图谱', indent: true },
   { path: '/retrieval', icon: 'search', label: '检索测试' },
-  { path: '/faq', icon: 'help-circle', label: 'FAQ 管理' },
 ]
 
 const isActive = (path: string) =>
@@ -237,6 +238,14 @@ const handleDeleteSession = (id: string) => {
 .nav-item.active {
   background: var(--td-gray-color-3);
   font-weight: var(--kl-weight-semibold);
+}
+
+.nav-sub {
+  padding-left: var(--kl-space-6);
+}
+
+.sidebar.collapsed .nav-sub {
+  padding-left: 0;
 }
 
 .session-section {

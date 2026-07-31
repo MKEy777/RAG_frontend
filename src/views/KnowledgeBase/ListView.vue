@@ -26,16 +26,6 @@
     <div class="kb-list-body">
       <!-- 左侧筛选栏 -->
       <aside class="filter-sidebar">
-        <div class="filter-group">
-          <div class="filter-label">类型</div>
-          <div
-            v-for="opt in typeFilters"
-            :key="opt.value"
-            class="filter-item"
-            :class="{ active: filterType === opt.value }"
-            @click="filterType = opt.value"
-          >{{ opt.label }}</div>
-        </div>
         <div v-if="groups.length" class="filter-group">
           <div class="filter-label">分组</div>
           <div
@@ -94,9 +84,6 @@
             </div>
             <p class="kb-card-desc">{{ kb.description || '暂无描述' }}</p>
             <div class="kb-card-foot">
-              <t-tag :theme="kb.type === 'document' ? 'primary' : 'success'" variant="light" size="small">
-                {{ kb.type === 'document' ? '文档' : 'FAQ' }}
-              </t-tag>
               <t-tag v-if="kb.enable_wiki" variant="outline" size="small">Wiki</t-tag>
               <t-tag v-if="kb.enable_graph" variant="outline" size="small">图谱</t-tag>
             </div>
@@ -137,7 +124,6 @@ const knowledgeBases = ref<KnowledgeBase[]>([])
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 })
 
 const sortBy = ref('updated')
-const filterType = ref('')
 const filterFeature = ref('')
 const groups = ref<string[]>([])
 const filterGroup = ref('')
@@ -149,12 +135,6 @@ const workflowSteps = [
   { icon: 'api', title: 'API 调用', desc: '业务侧通过接口调用知识' },
 ]
 
-const typeFilters = [
-  { label: '全部', value: '' },
-  { label: '文档', value: 'document' },
-  { label: 'FAQ', value: 'faq' },
-]
-
 const featureFilters = [
   { label: 'Wiki', value: 'wiki' },
   { label: '图谱', value: 'graph' },
@@ -162,7 +142,6 @@ const featureFilters = [
 
 const filteredBases = computed(() => {
   let list = knowledgeBases.value
-  if (filterType.value) list = list.filter((kb) => kb.type === filterType.value)
   if (filterFeature.value === 'wiki') list = list.filter((kb) => kb.enable_wiki)
   if (filterFeature.value === 'graph') list = list.filter((kb) => kb.enable_graph)
   if (filterGroup.value) list = list.filter((kb) => kb.group_name === filterGroup.value)

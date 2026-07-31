@@ -10,10 +10,11 @@
           v-for="ref in references"
           :key="ref.id"
           class="chat-refs-item"
+          :class="{ 'is-disabled': !ref.document_id }"
           @click="openChunk(ref)"
         >
           <span class="chat-refs-badge">{{ ref.id.slice(1) }}</span>
-          <span class="chat-refs-title">{{ ref.title_path || '未命名片段' }}</span>
+          <span class="chat-refs-title">{{ ref.title_path || refFallbackTitle(ref) }}</span>
           <t-tag size="small" variant="light" theme="primary">{{ ref.channel }}</t-tag>
           <span class="chat-refs-score">{{ ref.score.toFixed(3) }}</span>
         </div>
@@ -33,10 +34,25 @@ defineProps<{ references: ChatReference[] }>()
 const expanded = vueRef(false)
 const router = useRouter()
 
+const channelLabels: Record<string, string> = {
+  faq: 'FAQ 问答',
+  wiki: 'Wiki 页面',
+  vector: '文档片段',
+  keyword: '文档片段',
+  graph: '图谱关联',
+}
+
+const refFallbackTitle = (reference: ChatReference) =>
+  channelLabels[reference.channel] || '未命名片段'
+
 const openChunk = async (reference: ChatReference) => {
+  if (!reference.document_id) return
   try {
     const doc = await getDocument(reference.document_id)
-    router.push(`/knowledge-bases/${doc.knowledge_base_id}/documents/${doc.id}/chunks`)
+    router.push({
+      path: `/knowledge-bases/${doc.knowledge_base_id}/documents/${doc.id}/chunks`,
+      query: { from: 'chat', chunk_id: reference.chunk_id },
+    })
   } catch {
     // client 拦截器已弹错
   }
@@ -83,6 +99,14 @@ const openChunk = async (reference: ChatReference) => {
 
 .chat-refs-item:hover {
   background: var(--td-bg-color-secondarycontainer);
+}
+
+.chat-refs-item.is-disabled {
+  cursor: default;
+}
+
+.chat-refs-item.is-disabled:hover {
+  background: transparent;
 }
 
 .chat-refs-badge {

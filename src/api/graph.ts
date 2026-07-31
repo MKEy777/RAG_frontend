@@ -6,6 +6,7 @@ export interface GraphNode {
   description: string
   frequency: number
   degree: number
+  belongs?: boolean
 }
 
 export interface GraphEdge {
@@ -13,6 +14,7 @@ export interface GraphEdge {
   target: string
   description: string
   weight: number
+  belongs?: boolean
 }
 
 export interface GraphStats {
@@ -30,11 +32,12 @@ export interface GraphData {
 
 export async function getGraph(
   kbId: string,
-  limit = 300
+  limit = 300,
+  knowledgeId?: string
 ): Promise<GraphData> {
-  const { data } = await client.get(`/graph/${kbId}`, {
-    params: { limit },
-  })
+  const params: Record<string, unknown> = { limit }
+  if (knowledgeId) params.knowledge_id = knowledgeId
+  const { data } = await client.get(`/graph/${kbId}`, { params })
   return data
 }
 

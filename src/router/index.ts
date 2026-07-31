@@ -33,6 +33,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '知识库详情' },
       },
       {
+        path: 'knowledge-bases/:id/settings',
+        name: 'KbSettings',
+        component: () => import('@/views/KnowledgeBase/SettingsView.vue'),
+        meta: { title: '设置知识库' },
+      },
+      {
         path: 'knowledge-bases/:id/import-wizard',
         name: 'ImportWizard',
         component: () => import('@/views/KnowledgeBase/ImportWizard.vue'),
@@ -67,16 +73,22 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '知识图谱', fullHeight: true },
       },
       {
+        path: 'wiki',
+        name: 'WikiSelect',
+        component: () => import('@/views/KnowledgeBase/SelectKbView.vue'),
+        meta: { title: '知识 Wiki', mode: 'wiki' },
+      },
+      {
+        path: 'graph',
+        name: 'GraphSelect',
+        component: () => import('@/views/KnowledgeBase/SelectKbView.vue'),
+        meta: { title: '知识图谱', mode: 'graph' },
+      },
+      {
         path: 'retrieval',
         name: 'RetrievalTest',
         component: () => import('@/views/Retrieval/TestView.vue'),
         meta: { title: '检索测试' },
-      },
-      {
-        path: 'faq',
-        name: 'FaqManage',
-        component: () => import('@/views/Faq/FaqView.vue'),
-        meta: { title: 'FAQ 管理' },
       },
     ],
   },

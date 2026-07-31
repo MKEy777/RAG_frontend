@@ -8,27 +8,15 @@
         <h3 class="section-title">定义知识库</h3>
         <t-form :label-width="90">
           <t-form-item label="名称">
-            <div class="input-with-count">
-              <t-input v-model="form.name" placeholder="请输入知识库名称" :maxlength="50" />
-              <span class="char-count">{{ form.name.length }} / 50</span>
-            </div>
+            <t-input v-model="form.name" placeholder="请输入知识库名称" :maxlength="50" show-limit-number />
           </t-form-item>
-          <t-form-item label="描述">
-            <div class="input-with-count">
-              <t-textarea
-                v-model="form.description"
-                placeholder="为快速了解核心内容，建议填写详细的知识库描述"
-                :autosize="{ minRows: 3, maxRows: 6 }"
-                :maxlength="400"
-              />
-              <span class="char-count">{{ form.description.length }} / 400</span>
-            </div>
-          </t-form-item>
-          <t-form-item label="类型">
-            <t-select v-model="form.type">
-              <t-option value="document" label="文档知识库" />
-              <t-option value="faq" label="FAQ 知识库" />
-            </t-select>
+  <t-form-item label="描述">
+            <t-textarea
+              v-model="form.description"
+              placeholder="为快速了解核心内容，建议填写详细的知识库描述"
+              :autosize="{ minRows: 3, maxRows: 6 }"
+              :maxlength="400"
+            />
           </t-form-item>
         </t-form>
       </section>
@@ -100,6 +88,9 @@ onMounted(async () => {
   try {
     const res = await listEmbeddingModels()
     embeddingModels.value = res.models
+    if (res.models.length && !res.models.some((m) => m.id === form.embedding_model_id)) {
+      form.embedding_model_id = res.models[0].id
+    }
   } catch { /* fallback */ }
 })
 
@@ -150,6 +141,19 @@ const handleCreate = async () => {
   font-weight: var(--kl-weight-semibold);
   color: var(--td-text-color-primary);
   margin: 0 0 var(--kl-space-4);
+}
+
+.input-with-count {
+  position: relative;
+  width: 100%;
+}
+
+.char-count {
+  position: absolute;
+  right: var(--kl-space-2);
+  bottom: var(--kl-space-2);
+  font-size: var(--kl-text-xs);
+  color: var(--td-text-color-placeholder);
 }
 
 .input-with-count {

@@ -3,7 +3,7 @@
     <PageHeader title="检索测试" subtitle="调试混合检索与重排效果" />
     <t-row :gutter="16">
       <!-- 左侧：查询输入 -->
-      <t-col :span="searching || hits.length > 0 || faqHits.length > 0 ? 4 : 12">
+      <t-col :span="searching || hits.length > 0 ? 4 : 12">
         <t-card title="查询配置" :bordered="false" class="config-card">
           <t-form :data="formData" :label-width="72" class="compact-form">
             <t-form-item label="知识库">
@@ -34,7 +34,6 @@
                   <template #icon><t-icon name="search" /></template>
                 </t-button>
               </div>
-              <span class="query-count">{{ formData.query.length }}/500</span>
             </t-form-item>
             <t-form-item label="Top K">
               <t-slider
@@ -80,7 +79,7 @@
       </t-col>
 
       <!-- 右侧：检索结果 -->
-      <t-col v-if="searching || hits.length > 0 || faqHits.length > 0" :span="8">
+      <t-col v-if="searching || hits.length > 0" :span="8">
         <t-card title="检索结果" :bordered="false">
           <template #action>
             <div class="result-actions">
@@ -92,32 +91,11 @@
           </template>
 
           <t-loading :loading="searching">
-            <div v-if="hits.length === 0 && faqHits.length === 0 && !searching" class="empty-state">
+            <div v-if="hits.length === 0 && !searching" class="empty-state">
               <t-empty description="暂无检索结果，请输入查询并点击检索" />
             </div>
 
             <div v-else class="hits-list">
-              <template v-if="faqHits.length > 0">
-                <div class="faq-section-label">
-                  <t-tag theme="warning" variant="light">FAQ 命中 {{ faqHits.length }} 条（独立路径，不参与融合）</t-tag>
-                </div>
-                <t-card
-                  v-for="hit in faqHits"
-                  :key="hit.chunk_id"
-                  :bordered="true"
-                  class="hit-card faq-hit-card"
-                  hover-shadow
-                >
-                  <template #title>
-                    <div class="hit-header">
-                      <t-tag theme="warning" size="small">FAQ</t-tag>
-                      <span class="hit-score">分数: {{ hit.score.toFixed(4) }}</span>
-                    </div>
-                  </template>
-                  <pre class="hit-content">{{ hit.content }}</pre>
-                </t-card>
-              </template>
-
               <t-card
                 v-for="(hit, index) in displayHits"
                 :key="hit.chunk_id"
@@ -232,7 +210,6 @@ const showSettingsDialog = ref(false)
 const hideGraph = ref(false)
 const kbOptions = ref<{ label: string; value: string }[]>([])
 const hits = ref<RetrievalHit[]>([])
-const faqHits = ref<RetrievalHit[]>([])
 const serverHistory = ref<RetrievalHistoryItem[]>([])
 const historyLoading = ref(false)
 
@@ -349,7 +326,6 @@ const handleSearch = async () => {
 
   searching.value = true
   hits.value = []
-  faqHits.value = []
   try {
     const res = await retrieve({
       kb_ids: formData.kb_ids,
@@ -363,9 +339,8 @@ const handleSearch = async () => {
       ...advParams,
     })
     hits.value = res.hits
-    faqHits.value = res.faq_hits || []
     fetchHistory()
-    if (res.hits.length === 0 && faqHits.value.length === 0) {
+    if (res.hits.length === 0) {
       MessagePlugin.info('未找到相关结果')
     }
   } catch {
@@ -541,14 +516,6 @@ onMounted(async () => {
   border-radius: var(--kl-radius-card);
 }
 
-.faq-hit-card {
-  border-color: var(--td-warning-color-3);
-}
-
-.faq-section-label {
-  margin-bottom: var(--kl-space-1);
-}
-
 .hit-header {
   display: flex;
   align-items: center;
@@ -579,14 +546,6 @@ onMounted(async () => {
   border-radius: var(--kl-radius-md);
   max-height: 300px;
   overflow: auto;
-}
-
-.query-count {
-  display: block;
-  text-align: right;
-  font-size: var(--kl-text-xs);
-  color: var(--td-text-color-placeholder);
-  margin-top: var(--kl-space-1);
 }
 
 .result-actions {
