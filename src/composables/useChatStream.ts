@@ -50,6 +50,9 @@ export function useChatStream() {
           onToken: (token) => {
             if (gen === generation) msg.content += token
           },
+          onVia: (via) => {
+            if (gen === generation) msg.via = via
+          },
           onReferences: (references) => {
             if (gen === generation) msg.references = references
           },

@@ -70,6 +70,7 @@ const navItems = [
   { path: '/wiki', icon: 'book', label: '知识 Wiki', indent: true },
   { path: '/graph', icon: 'relation', label: '知识图谱', indent: true },
   { path: '/retrieval', icon: 'search', label: '检索测试' },
+  { path: '/fastpath', icon: 'lightning-circle', label: '快路径' },
 ]
 
 const isActive = (path: string) =>

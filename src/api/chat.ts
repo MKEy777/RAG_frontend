@@ -12,6 +12,7 @@ export interface ChatParams {
 
 export interface ChatStreamCallbacks {
   onToken: (token: string) => void
+  onVia?: (via: 'fastpath' | 'cache') => void
   onReferences: (references: ChatReference[]) => void
   onSuggestions?: (items: string[]) => void
   onDone: () => void
@@ -37,6 +38,8 @@ export function streamChat(
     onmessage(ev) {
       if (ev.event === 'message') {
         callbacks.onToken(JSON.parse(ev.data).content ?? '')
+      } else if (ev.event === 'via') {
+        callbacks.onVia?.(JSON.parse(ev.data).via ?? 'fastpath')
       } else if (ev.event === 'references') {
         callbacks.onReferences(JSON.parse(ev.data).references ?? [])
       } else if (ev.event === 'suggestions') {

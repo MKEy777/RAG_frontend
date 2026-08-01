@@ -90,6 +90,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/Retrieval/TestView.vue'),
         meta: { title: '检索测试' },
       },
+      {
+        path: 'fastpath',
+        name: 'FastPath',
+        component: () => import('@/views/FastPath/FastPathView.vue'),
+        meta: { title: '快路径' },
+      },
     ],
   },
 ]

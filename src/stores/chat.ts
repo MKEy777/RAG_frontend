@@ -15,6 +15,7 @@ export interface ChatMessage {
   content: string
   references?: ChatReference[]
   suggestions?: string[]
+  via?: 'fastpath' | 'cache'
   complete: boolean
   error?: string
 }

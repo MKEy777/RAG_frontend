@@ -32,6 +32,10 @@ export interface RetrievalHit {
 
 export interface RetrievalResponse {
   hits: RetrievalHit[]
+  duration_ms?: number
+  latency_p50_ms?: number
+  latency_p99_ms?: number
+  latency_samples?: number
 }
 
 export async function retrieve(
@@ -49,6 +53,8 @@ export interface RetrievalHistoryItem {
   hit_count: number
   top_score: number
   duration_ms: number
+  latency_p50_ms?: number | null
+  latency_p99_ms?: number | null
   created_at: string
 }
 

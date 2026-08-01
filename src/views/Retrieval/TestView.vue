@@ -3,7 +3,7 @@
     <PageHeader title="检索测试" subtitle="调试混合检索与重排效果" />
     <t-row :gutter="16">
       <!-- 左侧：查询输入 -->
-      <t-col :span="searching || hits.length > 0 ? 4 : 12">
+      <t-col :span="searching || hits.length > 0 || latency.durationMs > 0 ? 4 : 12">
         <t-card title="查询配置" :bordered="false" class="config-card">
           <t-form :data="formData" :label-width="72" class="compact-form">
             <t-form-item label="知识库">
@@ -79,11 +79,15 @@
       </t-col>
 
       <!-- 右侧：检索结果 -->
-      <t-col v-if="searching || hits.length > 0" :span="8">
+      <t-col v-if="searching || hits.length > 0 || latency.durationMs > 0" :span="8">
         <t-card title="检索结果" :bordered="false">
-          <template #action>
+          <template #actions>
             <div class="result-actions">
               <t-checkbox v-model="hideGraph" size="small">隐藏图谱切片</t-checkbox>
+              <t-tag v-if="latency.durationMs > 0" theme="default" variant="light" class="latency-tag">
+                <span class="latency-this">本次 {{ latency.durationMs }}ms</span>
+                <span v-if="latency.samples > 0"> · P50 {{ latency.p50Ms }}ms · P99 {{ latency.p99Ms }}ms ({{ latency.samples }} 次采样)</span>
+              </t-tag>
               <t-tag v-if="displayHits.length > 0" theme="primary" variant="light">
                 共 {{ displayHits.length }} 条结果
               </t-tag>
@@ -92,7 +96,7 @@
 
           <t-loading :loading="searching">
             <div v-if="hits.length === 0 && !searching" class="empty-state">
-              <t-empty description="暂无检索结果，请输入查询并点击检索" />
+              <t-empty description="暂无检索结果，请确认知识库已索引或调整查询" />
             </div>
 
             <div v-else class="hits-list">
@@ -133,7 +137,13 @@
 
     <!-- 测试历史 -->
     <div class="history-section">
-      <div class="history-title">测试历史</div>
+      <div class="history-title">
+        <span>测试历史</span>
+        <t-tag v-if="latency.durationMs > 0" theme="default" variant="light" class="latency-tag">
+          <span class="latency-this">本次 {{ latency.durationMs }}ms</span>
+          <span v-if="latency.samples > 0"> · P50 {{ latency.p50Ms }}ms · P99 {{ latency.p99Ms }}ms ({{ latency.samples }} 次采样)</span>
+        </t-tag>
+      </div>
       <div class="history-list">
         <div
           v-for="h in serverHistory"
@@ -143,7 +153,7 @@
         >
           <span class="history-query">{{ h.query }}</span>
           <div class="history-right">
-            <span class="history-meta">{{ h.hit_count }} 条 · {{ h.duration_ms }}ms · {{ h.created_at }}</span>
+            <span class="history-meta">{{ h.hit_count }} 条 · {{ h.duration_ms }}ms<span v-if="h.latency_p50_ms != null"> · P50 {{ h.latency_p50_ms }}ms · P99 {{ h.latency_p99_ms }}ms</span> · {{ h.created_at }}</span>
             <t-icon name="delete" class="history-delete" @click.stop="handleDeleteHistory(h.id)" />
           </div>
         </div>
@@ -212,6 +222,13 @@ const kbOptions = ref<{ label: string; value: string }[]>([])
 const hits = ref<RetrievalHit[]>([])
 const serverHistory = ref<RetrievalHistoryItem[]>([])
 const historyLoading = ref(false)
+
+const latency = reactive({
+  durationMs: 0,
+  p50Ms: 0,
+  p99Ms: 0,
+  samples: 0,
+})
 
 const searchSettings = ref<SearchSettings>({
   strategy: 'hybrid',
@@ -339,6 +356,10 @@ const handleSearch = async () => {
       ...advParams,
     })
     hits.value = res.hits
+    latency.durationMs = res.duration_ms ?? 0
+    latency.p50Ms = res.latency_p50_ms ?? 0
+    latency.p99Ms = res.latency_p99_ms ?? 0
+    latency.samples = res.latency_samples ?? 0
     fetchHistory()
     if (res.hits.length === 0) {
       MessagePlugin.info('未找到相关结果')
@@ -552,6 +573,20 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: var(--kl-space-3);
+  flex-wrap: wrap;
+}
+
+.latency-tag {
+  font-variant-numeric: tabular-nums;
+}
+
+.latency-this {
+  font-weight: var(--kl-weight-semibold);
+  color: var(--td-brand-color);
+}
+
+.latency-note {
+  opacity: 0.65;
 }
 
 .history-section {
@@ -559,6 +594,9 @@ onMounted(async () => {
 }
 
 .history-title {
+  display: flex;
+  align-items: center;
+  gap: var(--kl-space-2);
   font-size: var(--kl-text-sm);
   font-weight: var(--kl-weight-semibold);
   color: var(--td-text-color-primary);

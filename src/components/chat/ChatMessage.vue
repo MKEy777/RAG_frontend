@@ -16,6 +16,11 @@
         @click="handleClick"
       ></div>
 
+      <div v-if="message.complete && message.via" class="fastpath-badge">
+        <t-icon :name="message.via === 'fastpath' ? 'lightning-circle' : 'refresh'" size="14px" />
+        <span>{{ message.via === 'fastpath' ? '快路径命中' : '语义缓存命中' }}</span>
+      </div>
+
       <div v-if="message.error" class="msg-error">
         <t-icon name="error-circle" size="14px" />
         <span>{{ message.error }}</span>
@@ -138,6 +143,18 @@ const handleClick = (e: MouseEvent) => {
   margin-top: var(--kl-space-2);
   font-size: var(--kl-text-sm);
   color: var(--td-error-color);
+}
+
+.fastpath-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: var(--kl-radius-pill);
+  font-size: var(--kl-text-xs);
+  color: var(--td-brand-color);
+  background: color-mix(in srgb, var(--td-brand-color) 10%, transparent);
 }
 
 .popover-wrap {
